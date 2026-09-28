@@ -16,7 +16,22 @@ function clearSession() {
 
 // Intercept fetch to add any headers if needed in the future
 async function apiFetch(endpoint, options = {}) {
-  return fetch(`${API}${endpoint}`, options);
+  const session = getSession();
+  if (session && session.id) {
+    options.headers = {
+      ...options.headers,
+      "x-admin-id": session.id,
+    };
+  }
+
+  const response = await fetch(`${API}${endpoint}`, options);
+  
+  if (response.status === 401) {
+    clearSession();
+    window.location.reload();
+  }
+  
+  return response;
 }
 
 // Auth APIs
