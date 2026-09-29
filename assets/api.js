@@ -1,4 +1,4 @@
-const API = "https://aessaaessa.alwaysdata.net";
+const API = "http://localhost:3001";
 
 // Session Management
 function getSession() {
