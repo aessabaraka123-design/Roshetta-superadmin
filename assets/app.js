@@ -968,7 +968,7 @@ async function openPharmacyDetail(id) {
       <td class="px-4 py-3">${roleBadge(s.role)} ${s.status === "active" ? '<span class="text-emerald-500 text-xs">نشط</span>' : '<span class="text-red-500 text-xs">متوقف</span>'}</td>
       <td class="px-4 py-3">
         <div class="flex gap-2">
-          <button onclick="openEditStaff('${s.id}', '${(s.name || "").replace(/'/g, "\'")}', '${(s.email || "").replace(/'/g, "\'")}', '${s.role}')" class="text-blue-500 text-xs font-semibold hover:underline">تعديل</button>
+          <button onclick="openEditStaff('${s.id}', '${(s.name || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${(s.email || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${s.role}', '${s.branch || ''}', '${(s.password || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}')" class="text-blue-500 text-xs font-semibold hover:underline">تعديل</button>
           <span class="text-slate-200">|</span>
           <button onclick="toggleStaffStatus('${s.id}', '${s.status}')" class="${s.status === "active" ? "text-amber-500" : "text-emerald-500"} text-xs font-semibold hover:underline">${s.status === "active" ? "إيقاف" : "تفعيل"}</button>
           <span class="text-slate-200">|</span>
@@ -1103,12 +1103,12 @@ function openAddStaff() {
   document.getElementById("stBranch").value = "";
   toggleModal('staffModal', true);
 }
-function openEditStaff(id, name, email, role, branchId) {
+function openEditStaff(id, name, email, role, branchId, password) {
   currentEditStaffId = id;
     document.querySelector("#staffModal h3").textContent = "تعديل موظف";
   document.getElementById("stName").value = name || "";
   document.getElementById("stEmail").value = email || "";
-  document.getElementById("stPass").value = "";
+  document.getElementById("stPass").value = password || "";
   document.getElementById("stRole").value = role || "pharmacist";
   populateBranchSelect();
   document.getElementById("stBranch").value = branchId || "";
