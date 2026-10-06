@@ -968,7 +968,7 @@ async function openPharmacyDetail(id) {
       currentDetPh.subscriptionType || "monthly";
     document.getElementById("dbPaid").value = currentDetPh.totalPaid || 0;
     document.getElementById("dbEmail").value = currentDetPh.email || "";
-    document.getElementById("dbPassword").value = "";
+    document.getElementById("dbPassword").value = currentDetPh.password || "";
 
     // Staff
     const stb = document.getElementById("detStaffTbl");
