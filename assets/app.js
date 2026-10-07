@@ -362,7 +362,7 @@ function renderPharmsList() {
       (p.name || "").toLowerCase().includes(q) ||
       (p.owner || "").toLowerCase().includes(q) ||
       (p.phone || "").includes(q),
-  );
+  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const paged = paginateData(
     filtered,
