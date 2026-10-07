@@ -444,12 +444,12 @@
                 <!-- Customers Tab -->
                 <div id="det-customers" class="det-content hidden">
                   <div class="flex justify-between items-center mb-6 border-b pb-3">
-                    <h4 class="font-bold text-slate-800 text-lg">������� �������</h4>
+                    <h4 class="font-bold text-slate-800 text-lg">العملاء والديون</h4>
                   </div>
                 
                   <div class="flex gap-2 mb-4 bg-slate-100 p-1.5 rounded-xl w-max">
-                    <button id="custSubTabList" onclick="switchCustTab('list')" class="px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition">����� �������</button>
-                    <button id="custSubTabPayments" onclick="switchCustTab('payments')" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition">��� ���� ������</button>
+                    <button id="custSubTabList" onclick="switchCustTab('list')" class="px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition">قائمة العملاء</button>
+                    <button id="custSubTabPayments" onclick="switchCustTab('payments')" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition">سجل سداد الديون</button>
                   </div>
                 
                   <div id="custListView">
@@ -457,14 +457,14 @@
                       <table class="w-full text-sm text-right">
                         <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
                           <tr>
-                            <th class="px-4 py-3">��� ������</th>
-                            <th class="px-4 py-3">��� ������</th>
-                            <th class="px-4 py-3">������ (?)</th>
-                            <th class="px-4 py-3">��� �����</th>
+                            <th class="px-4 py-3">اسم العميل</th>
+                            <th class="px-4 py-3">رقم الهاتف</th>
+                            <th class="px-4 py-3">الديون (₪)</th>
+                            <th class="px-4 py-3">آخر زيارة</th>
                           </tr>
                         </thead>
                         <tbody id="adminCustomersTable" class="divide-y divide-slate-100">
-                          <tr><td colspan="4" class="text-center py-8 text-slate-400">���� �������...</td></tr>
+                          <tr><td colspan="4" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -475,13 +475,13 @@
                       <table class="w-full text-sm text-right">
                         <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
                           <tr>
-                            <th class="px-4 py-3">��� ������</th>
-                            <th class="px-4 py-3">������ (?)</th>
-                            <th class="px-4 py-3">����� ������</th>
+                            <th class="px-4 py-3">اسم العميل</th>
+                            <th class="px-4 py-3">المبلغ (₪)</th>
+                            <th class="px-4 py-3">تاريخ السداد</th>
                           </tr>
                         </thead>
                         <tbody id="adminDebtPaymentsTable" class="divide-y divide-slate-100">
-                          <tr><td colspan="3" class="text-center py-8 text-slate-400">���� �������...</td></tr>
+                          <tr><td colspan="3" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>
                         </tbody>
                       </table>
                     </div>
