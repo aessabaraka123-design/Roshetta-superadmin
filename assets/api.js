@@ -271,3 +271,13 @@ async function apiSetCustomPrice(pharmacyId, customPrice) {
     body: JSON.stringify({ customPrice: customPrice === "" ? null : parseFloat(customPrice) }),
   }).then((r) => r.json());
 }
+
+
+async function apiGetAdminCustomers(phId) {
+  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/customers");
+  return res.json();
+}
+async function apiGetAdminDebtPayments(phId) {
+  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/debt-payments");
+  return res.json();
+}

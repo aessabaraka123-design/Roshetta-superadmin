@@ -1074,6 +1074,9 @@ function switchDetTab(t) {
 
   if (t === 'stats') {
     loadPharmacyStats();
+    } else if (t === "customers") {
+    loadAdminCustomers();
+    loadAdminDebtPayments();
   } else if (t === 'invoices') {
     loadAdminSales();
   }
@@ -2000,4 +2003,74 @@ function deletePlan(id, name) {
       }
     }
   );
+}
+
+
+function switchCustTab(tab) {
+  document.getElementById("custListView").classList.add("hidden");
+  document.getElementById("custPaymentsView").classList.add("hidden");
+  document.getElementById("custSubTabList").classList.replace("bg-white", "bg-transparent");
+  document.getElementById("custSubTabList").classList.replace("text-indigo-600", "text-slate-500");
+  document.getElementById("custSubTabList").classList.remove("shadow-sm");
+  
+  document.getElementById("custSubTabPayments").classList.replace("bg-white", "bg-transparent");
+  document.getElementById("custSubTabPayments").classList.replace("text-indigo-600", "text-slate-500");
+  document.getElementById("custSubTabPayments").classList.remove("shadow-sm");
+
+  if (tab === "list") {
+    document.getElementById("custListView").classList.remove("hidden");
+    document.getElementById("custSubTabList").classList.replace("bg-transparent", "bg-white");
+    document.getElementById("custSubTabList").classList.replace("text-slate-500", "text-indigo-600");
+    document.getElementById("custSubTabList").classList.add("shadow-sm");
+  } else {
+    document.getElementById("custPaymentsView").classList.remove("hidden");
+    document.getElementById("custSubTabPayments").classList.replace("bg-transparent", "bg-white");
+    document.getElementById("custSubTabPayments").classList.replace("text-slate-500", "text-indigo-600");
+    document.getElementById("custSubTabPayments").classList.add("shadow-sm");
+  }
+}
+
+async function loadAdminCustomers() {
+  if (!currentDetId) return;
+  const tbody = document.getElementById("adminCustomersTable");
+  tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">���� �������...</td></tr>`;
+  try {
+    const res = await apiGetAdminCustomers(currentDetId);
+    if (res.success && res.customers.length > 0) {
+      tbody.innerHTML = res.customers.map(c => `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+          <td class="px-4 py-3 font-semibold text-slate-700">${c.name}</td>
+          <td class="px-4 py-3 text-slate-600" dir="ltr">${c.phone || "-"}</td>
+          <td class="px-4 py-3 font-bold ${c.debt > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(c.debt || 0)} ?</td>
+          <td class="px-4 py-3 text-slate-500">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("ar-EG") : "-"}</td>
+        </tr>
+      `).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">�� ���� ����� ������</td></tr>`;
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">��� ��� ����� ����� �������</td></tr>`;
+  }
+}
+
+async function loadAdminDebtPayments() {
+  if (!currentDetId) return;
+  const tbody = document.getElementById("adminDebtPaymentsTable");
+  tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-slate-400">���� �������...</td></tr>`;
+  try {
+    const res = await apiGetAdminDebtPayments(currentDetId);
+    if (res.success && res.payments.length > 0) {
+      tbody.innerHTML = res.payments.map(p => `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+          <td class="px-4 py-3 font-semibold text-slate-700">${p.customer_name || "���� �����"}</td>
+          <td class="px-4 py-3 font-bold text-green-600" dir="ltr">${new Intl.NumberFormat("en-US").format(p.amount || 0)} ?</td>
+          <td class="px-4 py-3 text-slate-500">${p.date ? new Date(p.date).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</td>
+        </tr>
+      `).join("");
+    } else {
+      tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-slate-400">�� ���� ��� �����</td></tr>`;
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-red-500">��� ��� ����� ����� �������</td></tr>`;
+  }
 }

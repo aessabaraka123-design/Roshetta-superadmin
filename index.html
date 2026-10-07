@@ -317,6 +317,7 @@
                 <button onclick="switchDetTab('stats')" id="btn-det-stats" class="det-nav whitespace-nowrap flex-shrink-0 text-right px-4 py-3 rounded-xl font-bold text-sm bg-white border border-slate-100 text-slate-600 hover:bg-slate-50 transition">📊 إحصائيات الأداء</button>
                 <button onclick="switchDetTab('invoices')" id="btn-det-invoices" class="det-nav whitespace-nowrap flex-shrink-0 text-right px-4 py-3 rounded-xl font-bold text-sm bg-white border border-slate-100 text-slate-600 hover:bg-slate-50 transition">🧾 فواتير المبيعات</button>
                 <button onclick="switchDetTab('staff')" id="btn-det-staff" class="det-nav whitespace-nowrap flex-shrink-0 text-right px-4 py-3 rounded-xl font-bold text-sm bg-white border border-slate-100 text-slate-600 hover:bg-slate-50 transition">الموظفين (Staff)</button>
+                                <button onclick="switchDetTab('customers')" id="btn-det-customers" class="det-nav whitespace-nowrap flex-shrink-0 text-right px-4 py-3 rounded-xl font-bold text-sm bg-white border border-slate-100 text-slate-600 hover:bg-slate-50 transition">?? ������� �������</button>
                 <button onclick="switchDetTab('branches')" id="btn-det-branches" class="det-nav whitespace-nowrap flex-shrink-0 text-right px-4 py-3 rounded-xl font-bold text-sm bg-white border border-slate-100 text-slate-600 hover:bg-slate-50 transition">الفروع (Branches)</button>
               </div>
 
@@ -437,6 +438,54 @@
                     </thead>
                     <tbody id="detStaffTbl" class="divide-y divide-slate-50 text-slate-700"></tbody>
                   </table>
+                </div>
+
+
+                <!-- Customers Tab -->
+                <div id="det-customers" class="det-content hidden">
+                  <div class="flex justify-between items-center mb-6 border-b pb-3">
+                    <h4 class="font-bold text-slate-800 text-lg">������� �������</h4>
+                  </div>
+                
+                  <div class="flex gap-2 mb-4 bg-slate-100 p-1.5 rounded-xl w-max">
+                    <button id="custSubTabList" onclick="switchCustTab('list')" class="px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition">����� �������</button>
+                    <button id="custSubTabPayments" onclick="switchCustTab('payments')" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition">��� ���� ������</button>
+                  </div>
+                
+                  <div id="custListView">
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
+                          <tr>
+                            <th class="px-4 py-3">��� ������</th>
+                            <th class="px-4 py-3">��� ������</th>
+                            <th class="px-4 py-3">������ (?)</th>
+                            <th class="px-4 py-3">��� �����</th>
+                          </tr>
+                        </thead>
+                        <tbody id="adminCustomersTable" class="divide-y divide-slate-100">
+                          <tr><td colspan="4" class="text-center py-8 text-slate-400">���� �������...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                
+                  <div id="custPaymentsView" class="hidden">
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
+                          <tr>
+                            <th class="px-4 py-3">��� ������</th>
+                            <th class="px-4 py-3">������ (?)</th>
+                            <th class="px-4 py-3">����� ������</th>
+                          </tr>
+                        </thead>
+                        <tbody id="adminDebtPaymentsTable" class="divide-y divide-slate-100">
+                          <tr><td colspan="3" class="text-center py-8 text-slate-400">���� �������...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Branches Tab -->
