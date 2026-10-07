@@ -373,7 +373,7 @@ function renderPharmsList() {
 
   if (!paged.length) {
     tb.innerHTML =
-      '<tr><td colspan="8" class="text-center py-8 text-slate-400">لا يوجد صيدليات</td></tr>';
+      '<tr><td colspan="9" class="text-center py-8 text-slate-400">لا يوجد صيدليات</td></tr>';
   } else {
     tb.innerHTML = paged
       .map((p) => {
@@ -393,6 +393,7 @@ function renderPharmsList() {
       <td class="px-4 py-3 text-slate-600">${p.owner || "—"}</td>
       <td class="px-4 py-3 text-slate-500">${p.phone || "—"}</td>
       <td class="px-4 py-3">${subBadge(p.subscriptionType)}</td>
+      <td class="px-4 py-3 text-xs text-slate-500">${fd(p.createdAt)}</td>
       <td class="px-4 py-3 text-xs text-slate-500">${p.subscriptionType === "lifetime" ? '<span class="text-indigo-600 font-bold">مدى الحياة</span>' : fd(p.subscriptionExpiry)}</td>
       <td class="px-4 py-3 font-mono text-sm">${Number(p.totalPaid || 0).toLocaleString("en-US")} ₪</td>
       <td class="px-4 py-3">${statusBadge}</td>
