@@ -381,12 +381,16 @@ function renderPharmsList() {
           p.subscriptionType !== "lifetime" &&
           (!p.subscriptionExpiry ||
             new Date(p.subscriptionExpiry).getTime() < new Date().getTime());
-        let statusText = !p.subscriptionExpiry ? "غير مفعل" : "منتهي الاشتراك";
-        let statusBadge = p.isActive
-          ? `<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full">نشط</span>`
-          : `<span class="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full">متوقف</span>`;
-        if (isExpired)
-          statusBadge = `<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full" title="منتهي">${statusText}</span>`;
+        let statusBadge = "";
+        if (!p.isActive) {
+          statusBadge = `<span class="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full">متوقف</span>`;
+        } else if (p.isReadOnly) {
+          statusBadge = `<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full" title="بانتظار الموافقة">غير مفعل</span>`;
+        } else if (isExpired) {
+          statusBadge = `<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full" title="منتهي الاشتراك">منتهي الاشتراك</span>`;
+        } else {
+          statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full">نشط</span>`;
+        }
 
         return `<tr>
       <td class="px-6 py-3"><div class="font-semibold text-slate-900">${p.name}</div><div class="text-xs text-slate-400">${p.id.slice(0, 8)}…</div></td>
