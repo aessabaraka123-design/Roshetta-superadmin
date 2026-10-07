@@ -1253,7 +1253,7 @@ function viewAdminSale(saleId) {
   toggleModal("invoiceModal", true);
 }
 
-function deleteAdminSale(saleId) {
+async function deleteAdminSale(saleId) {
   if (!confirm("هل أنت متأكد من الحذف الإجباري لهذه الفاتورة؟ (إجراء خاص بالسوبر أدمن فقط)")) return;
   
   try {
