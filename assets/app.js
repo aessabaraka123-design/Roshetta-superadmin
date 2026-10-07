@@ -1238,16 +1238,20 @@ function viewAdminSale(saleId) {
   
   const tbody = document.getElementById("invDetItems");
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">لا توجد أصناف</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">لا توجد أصناف أو بيانات الفاتورة غير كاملة</td></tr>`;
   } else {
-    tbody.innerHTML = items.map(item => `
+    tbody.innerHTML = items.map(item => {
+      const name = item.name || item.displayName || item.drug_name || "صنف غير معروف";
+      const qty = item.cartQty || item.qty || item.quantity || 1;
+      const price = item.unitPrice || item.price || item.unit_price || 0;
+      return `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-        <td class="px-4 py-2 font-semibold text-slate-700">${item.name || item.drug_name || "صنف غير معروف"}</td>
-        <td class="px-4 py-2">${item.cartQty || item.quantity || item.qty || 1}</td>
-        <td class="px-4 py-2" dir="ltr">${new Intl.NumberFormat("en-US").format(item.price || item.unit_price || 0)} ₪</td>
-        <td class="px-4 py-2 font-bold text-slate-800" dir="ltr">${new Intl.NumberFormat("en-US").format((item.qty || 1) * (item.price || item.unit_price || 0))} ₪</td>
-      </tr>
-    `).join("");
+        <td class="px-4 py-2 font-semibold text-slate-700">${name}</td>
+        <td class="px-4 py-2">${qty}</td>
+        <td class="px-4 py-2" dir="ltr">${new Intl.NumberFormat("en-US").format(price)} ₪</td>
+        <td class="px-4 py-2 font-bold text-slate-800" dir="ltr">${new Intl.NumberFormat("en-US").format(qty * price)} ₪</td>
+      </tr>`;
+    }).join("");
   }
   
   toggleModal("invoiceModal", true);
