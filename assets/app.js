@@ -2060,26 +2060,59 @@ function switchCustTab(tab) {
   }
 }
 
+let currentAdminCustomers = [];
+
 async function loadAdminCustomers() {
   if (!currentDetId) return;
   const tbody = document.getElementById("adminCustomersTable");
-  tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>`;
+  const filter = document.getElementById("custBranchFilter");
+  filter.classList.add("hidden");
+  tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>`;
   try {
     const res = await apiGetAdminCustomers(currentDetId);
-    if (res.success && res.customers.length > 0) {
-      tbody.innerHTML = res.customers.map(c => `
-        <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-          <td class="px-4 py-3 font-semibold text-slate-700">${c.name}</td>
-          <td class="px-4 py-3 text-slate-600" dir="ltr">${c.phone || "-"}</td>
-          <td class="px-4 py-3 font-bold ${c.debt > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(c.debt || 0)} ₪</td>
-          <td class="px-4 py-3 text-slate-500">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("ar-EG") : "-"}</td>
-        </tr>
-      `).join("");
+    if (res.success) {
+      currentAdminCustomers = res.customers;
+      
+      // Populate branches dropdown
+      const branches = [...new Set(currentAdminCustomers.map(c => c.branch_name).filter(Boolean))];
+      if (branches.length > 0) {
+        let opts = '<option value="all">كل الفروع</option>';
+        branches.forEach(b => opts += `<option value="${b}">${b}</option>`);
+        filter.innerHTML = opts;
+        filter.value = "all";
+        filter.classList.remove("hidden");
+      }
+      
+      renderAdminCustomers();
     } else {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">لا يوجد عملاء مسجلين</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-500">حدث خطأ</td></tr>`;
     }
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل العملاء</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل العملاء</td></tr>`;
+  }
+}
+
+function renderAdminCustomers() {
+  const tbody = document.getElementById("adminCustomersTable");
+  const filterVal = document.getElementById("custBranchFilter").value;
+  
+  let list = currentAdminCustomers;
+  if (filterVal && filterVal !== "all") {
+    list = list.filter(c => c.branch_name === filterVal);
+  }
+  
+  if (list.length > 0) {
+    tbody.innerHTML = list.map(c => `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+        <td class="px-4 py-3 font-semibold text-slate-700">${c.name}</td>
+        <td class="px-4 py-3 text-slate-500">${c.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-slate-600" dir="ltr">${c.phone || "-"}</td>
+        <td class="px-4 py-3 font-bold ${c.debt > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(c.debt || 0)} ₪</td>
+        <td class="px-4 py-3 text-slate-500">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("ar-EG") : "-"}</td>
+      </tr>
+    `).join("");
+  } else {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">لا يوجد عملاء מסجلين</td></tr>`;
   }
 }
 
