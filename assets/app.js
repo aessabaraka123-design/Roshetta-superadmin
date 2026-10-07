@@ -770,8 +770,16 @@ function subBadge(t) {
     annual: "bg-emerald-100 text-emerald-700",
     monthly: "bg-blue-100 text-blue-700",
     trial: "bg-amber-100 text-amber-700",
+    free: "bg-amber-100 text-amber-700",
+    lifetime: "bg-indigo-100 text-indigo-700",
   };
-  return `<span class="${m[t] || m.monthly} text-xs font-semibold px-2.5 py-1 rounded-full">${t === "annual" ? "سنوي" : t === "trial" ? "تجريبي" : "شهري"}</span>`;
+  let text = "شهري";
+  if (t === "annual") text = "سنوي";
+  else if (t === "trial" || t === "free") text = "تجريبي";
+  else if (t === "lifetime") text = "مدى الحياة";
+  else if (t && t !== "monthly") text = t;
+
+  return `<span class="${m[t] || m.monthly} text-xs font-semibold px-2.5 py-1 rounded-full">${text}</span>`;
 }
 function roleBadge(r) {
   const m = {
