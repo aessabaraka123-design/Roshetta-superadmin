@@ -1391,20 +1391,7 @@ async function saveBranch() {
     toast("خطأ", "error");
   }
 }
-async function toggleBranchStatus(branchId, isAct) {
-  const newStatus = isAct ? "متوقف" : "نشط";
-  try {
-    const d = await apiUpdateBranch(currentDetId, branchId, {
-      status: newStatus,
-    });
-    if (d.success) {
-      toast("تم تغيير حالة الفرع");
-      openPharmacyDetail(currentDetId);
-    } else toast(d.error, "error");
-  } catch (e) {
-    toast("خطأ", "error");
-  }
-}
+
 async function deleteBranch(id) {
   showConfirm("حذف فرع", "تأكيد الحذف؟", "red", async () => {
     try {
