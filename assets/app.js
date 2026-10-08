@@ -434,7 +434,7 @@ async function loadUsers() {
     renderUsersList();
   } catch (e) {
     document.getElementById("usersTbl").innerHTML =
-      '<tr><td colspan="4" class="text-center py-8 text-red-400">خطأ في التحميل</td></tr>';
+      '<tr><td colspan="3" class="text-center py-8 text-red-400">خطأ في التحميل</td></tr>';
   }
 }
 
@@ -460,7 +460,7 @@ function renderUsersList() {
 
   if (!paged.length) {
     tb.innerHTML =
-      '<tr><td colspan="4" class="text-center py-8 text-slate-400">لا يوجد مستخدمون</td></tr>';
+      '<tr><td colspan="3" class="text-center py-8 text-slate-400">لا يوجد مستخدمون</td></tr>';
   } else {
     tb.innerHTML = paged
       .map((u) => {
@@ -481,7 +481,7 @@ function renderUsersList() {
 async function loadSales() {
   try {
     document.getElementById("salesTbl").innerHTML =
-      '<tr><td colspan="4" class="text-center py-8 text-slate-400">جاري جلب مبيعات الصيدليات...</td></tr>';
+      '<tr><td colspan="3" class="text-center py-8 text-slate-400">جاري جلب مبيعات الصيدليات...</td></tr>';
     const r = await apiGetPharmacies();
     const ps = r.pharmacies || [];
 
@@ -506,7 +506,7 @@ async function loadSales() {
     renderSalesList();
   } catch (e) {
     document.getElementById("salesTbl").innerHTML =
-      '<tr><td colspan="4" class="text-center py-8 text-red-400">خطأ في التحميل</td></tr>';
+      '<tr><td colspan="3" class="text-center py-8 text-red-400">خطأ في التحميل</td></tr>';
   }
 }
 
@@ -520,7 +520,7 @@ function renderSalesList() {
 
   if (!paged.length) {
     tb.innerHTML =
-      '<tr><td colspan="4" class="text-center py-8 text-slate-400">لا توجد بيانات</td></tr>';
+      '<tr><td colspan="3" class="text-center py-8 text-slate-400">لا توجد بيانات</td></tr>';
   } else {
     tb.innerHTML = paged
       .map(
@@ -1008,7 +1008,7 @@ async function openPharmacyDetail(id) {
     const stb = document.getElementById("detStaffTbl");
     if (!d.staff.length)
       stb.innerHTML =
-        '<tr><td colspan="4" class="text-center py-4 text-slate-400">لا يوجد موظفين</td></tr>';
+        '<tr><td colspan="3" class="text-center py-4 text-slate-400">لا يوجد موظفين</td></tr>';
     else
       stb.innerHTML = d.staff
         .map(
@@ -1033,7 +1033,7 @@ async function openPharmacyDetail(id) {
     const btb = document.getElementById("detBranchesTbl");
     if (!d.branches.length)
       btb.innerHTML =
-        '<tr><td colspan="4" class="text-center py-4 text-slate-400">لا توجد فروع</td></tr>';
+        '<tr><td colspan="3" class="text-center py-4 text-slate-400">لا توجد فروع</td></tr>';
     else
       btb.innerHTML = d.branches
         .map(
@@ -1277,7 +1277,7 @@ function viewAdminSale(saleId) {
   
   const tbody = document.getElementById("invDetItems");
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">لا توجد أصناف أو بيانات الفاتورة غير كاملة</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-slate-400">لا توجد أصناف أو بيانات الفاتورة غير كاملة</td></tr>`;
   } else {
     tbody.innerHTML = items.map(item => {
       const name = item.name || item.displayName || item.drug_name || "صنف غير معروف";
@@ -2092,7 +2092,7 @@ async function loadAdminCustomers() {
         branches.forEach(b => opts += `<option value="${b}">${b}</option>`);
         filter.innerHTML = opts;
         filter.value = "all";
-        filter.classList.remove("hidden");
+        // Do not unhide here, because default tab is list
       }
       
       renderAdminCustomers();
@@ -2163,15 +2163,16 @@ function switchSupTab(tab) {
     bPurchases.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition";
     vList.classList.remove("hidden");
     vPurchases.classList.add("hidden");
-    filter.onchange = renderAdminSuppliers;
-    renderAdminSuppliers(); // re-apply filter to list
+    filter.classList.add("hidden");
+    renderAdminSuppliers();
   } else {
     bPurchases.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition";
     bList.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition";
     vPurchases.classList.remove("hidden");
     vList.classList.add("hidden");
     filter.onchange = renderAdminPurchases;
-    renderAdminPurchases(); // re-apply filter to purchases
+    if (currentAdminPurchases.length > 0) filter.classList.remove("hidden");
+    renderAdminPurchases();
   }
 }
 
@@ -2183,7 +2184,7 @@ async function loadAdminSuppliers() {
   const tbody = document.getElementById("adminSuppliersTable");
   const filter = document.getElementById("supBranchFilter");
   filter.classList.add("hidden");
-  tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>`;
   try {
     const res = await apiGetAdminSuppliers(currentDetId);
     if (res.success) {
@@ -2230,21 +2231,16 @@ async function loadAdminSuppliers() {
       renderAdminSuppliers();
       renderAdminPurchases();
     } else {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">حدث خطأ</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-red-500">حدث خطأ</td></tr>`;
     }
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل الموردين</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل الموردين</td></tr>`;
   }
 }
 
 function renderAdminSuppliers() {
   const tbody = document.getElementById("adminSuppliersTable");
-  const filterVal = document.getElementById("supBranchFilter").value;
-  
   let list = currentAdminSuppliers;
-  if (filterVal && filterVal !== "all") {
-    list = list.filter(c => c.branch_name === filterVal);
-  }
   
   if (list.length > 0) {
     tbody.innerHTML = list.map(s => `
@@ -2253,13 +2249,13 @@ function renderAdminSuppliers() {
           <div class="font-semibold text-slate-700">${s.company || s.name}</div>
           ${s.company ? `<div class="text-xs text-slate-500">${s.name}</div>` : ''}
         </td>
-        <td class="px-4 py-3 text-slate-500">${s.branch_name}</td>
+        
         <td class="px-4 py-3 text-slate-600" dir="ltr">${s.phone || "-"}</td>
         <td class="px-4 py-3 font-bold ${s.balance > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(s.balance || 0)} ₪</td>
       </tr>
     `).join("");
   } else {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">لا يوجد موردين</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-slate-400">لا يوجد موردين</td></tr>`;
   }
 }
 
