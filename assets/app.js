@@ -2141,3 +2141,132 @@ async function loadAdminDebtPayments() {
     tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل الدفعات</td></tr>`;
   }
 }
+
+
+function switchSupTab(tab) {
+  const bList = document.getElementById("supSubTabList");
+  const bPurchases = document.getElementById("supSubTabPurchases");
+  const vList = document.getElementById("supListView");
+  const vPurchases = document.getElementById("supPurchasesView");
+  const filter = document.getElementById("supBranchFilter");
+  
+  if (tab === "list") {
+    bList.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition";
+    bPurchases.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition";
+    vList.classList.remove("hidden");
+    vPurchases.classList.add("hidden");
+    filter.onchange = renderAdminSuppliers;
+    renderAdminSuppliers(); // re-apply filter to list
+  } else {
+    bPurchases.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition";
+    bList.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition";
+    vPurchases.classList.remove("hidden");
+    vList.classList.add("hidden");
+    filter.onchange = renderAdminPurchases;
+    renderAdminPurchases(); // re-apply filter to purchases
+  }
+}
+
+let currentAdminSuppliers = [];
+let currentAdminPurchases = [];
+
+async function loadAdminSuppliers() {
+  if (!currentDetId) return;
+  const tbody = document.getElementById("adminSuppliersTable");
+  const filter = document.getElementById("supBranchFilter");
+  filter.classList.add("hidden");
+  tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>`;
+  try {
+    const res = await apiGetAdminSuppliers(currentDetId);
+    if (res.success) {
+      currentAdminSuppliers = res.suppliers;
+      
+      // We will also load purchases here so we have all branch data
+      const pRes = await apiGetAdminPurchases(currentDetId);
+      if (pRes.success) {
+        currentAdminPurchases = pRes.purchases;
+      }
+      
+      // Populate branches dropdown using both suppliers and purchases
+      const branches = [...new Set([
+        ...currentAdminSuppliers.map(s => s.branch_name).filter(Boolean),
+        ...currentAdminPurchases.map(p => p.branch_name).filter(Boolean)
+      ])];
+      
+      if (branches.length > 0) {
+        let opts = '<option value="all">كل الفروع</option>';
+        branches.forEach(b => opts += `<option value="${b}">${b}</option>`);
+        filter.innerHTML = opts;
+        filter.value = "all";
+        filter.classList.remove("hidden");
+      }
+      
+      renderAdminSuppliers();
+      renderAdminPurchases();
+    } else {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">حدث خطأ</td></tr>`;
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل الموردين</td></tr>`;
+  }
+}
+
+function renderAdminSuppliers() {
+  const tbody = document.getElementById("adminSuppliersTable");
+  const filterVal = document.getElementById("supBranchFilter").value;
+  
+  let list = currentAdminSuppliers;
+  if (filterVal && filterVal !== "all") {
+    list = list.filter(c => c.branch_name === filterVal);
+  }
+  
+  if (list.length > 0) {
+    tbody.innerHTML = list.map(s => `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+        <td class="px-4 py-3">
+          <div class="font-semibold text-slate-700">${s.company || s.name}</div>
+          ${s.company ? `<div class="text-xs text-slate-500">${s.name}</div>` : ''}
+        </td>
+        <td class="px-4 py-3 text-slate-500">${s.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-slate-600" dir="ltr">${s.phone || "-"}</td>
+        <td class="px-4 py-3 font-bold ${s.balance > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(s.balance || 0)} ₪</td>
+      </tr>
+    `).join("");
+  } else {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400">لا يوجد موردين</td></tr>`;
+  }
+}
+
+function renderAdminPurchases() {
+  const tbody = document.getElementById("adminPurchasesTable");
+  const filterVal = document.getElementById("supBranchFilter").value;
+  
+  let list = currentAdminPurchases;
+  if (filterVal && filterVal !== "all") {
+    list = list.filter(p => p.branch_name === filterVal);
+  }
+  
+  if (list.length > 0) {
+    tbody.innerHTML = list.map(p => {
+      let statusBadge = "";
+      if (p.status === "paid") statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded-md">مدفوعة</span>';
+      else if (p.status === "unpaid") statusBadge = '<span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded-md">غير مدفوعة</span>';
+      else statusBadge = '<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-1 rounded-md">مدفوعة جزئياً</span>';
+      
+      return `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+        <td class="px-4 py-3 font-mono text-sm font-semibold text-slate-600">#${p.invoice_number || p.id.slice(0,6)}</td>
+        <td class="px-4 py-3 text-slate-700 font-semibold">${p.supplier_name || "-"}</td>
+        <td class="px-4 py-3 text-slate-500">${p.date ? new Date(p.date).toLocaleDateString("ar-EG") : "-"}</td>
+        <td class="px-4 py-3 font-bold text-slate-700" dir="ltr">${new Intl.NumberFormat("en-US").format(p.total_cost || 0)} ₪</td>
+        <td class="px-4 py-3 text-emerald-600 font-semibold" dir="ltr">${new Intl.NumberFormat("en-US").format(p.paid_amount || 0)} ₪</td>
+        <td class="px-4 py-3 ${p.remaining > 0 ? "text-red-600 font-bold" : "text-slate-500"}" dir="ltr">${new Intl.NumberFormat("en-US").format(p.remaining || 0)} ₪</td>
+        <td class="px-4 py-3">${statusBadge}</td>
+        <td class="px-4 py-3 text-slate-500">${p.branch_name || "الفرع الرئيسي"}</td>
+      </tr>
+      `;
+    }).join("");
+  } else {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">لا توجد فواتير مشتريات</td></tr>`;
+  }
+}

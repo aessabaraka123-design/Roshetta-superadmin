@@ -281,3 +281,14 @@ async function apiGetAdminDebtPayments(phId) {
   const res = await apiFetch("/api/admin/pharmacies/" + phId + "/debt-payments");
   return res.json();
 }
+
+async function apiGetAdminSuppliers(phId) {
+  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/suppliers");
+  return res.json();
+}
+
+async function apiGetAdminPurchases(phId) {
+  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/purchases");
+  return res.json();
+}
+
