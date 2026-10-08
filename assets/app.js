@@ -2225,7 +2225,7 @@ async function loadAdminSuppliers() {
         branches.forEach(b => opts += `<option value="${b}">${b}</option>`);
         filter.innerHTML = opts;
         filter.value = "all";
-        filter.classList.remove("hidden");
+        // do not unhide here
       }
       
       renderAdminSuppliers();
