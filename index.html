@@ -444,6 +444,64 @@
 
 
                 <!-- Customers Tab -->
+                
+                <!-- Suppliers & Purchases Tab -->
+                <div id="det-suppliers" class="det-content hidden">
+                  <div class="flex justify-between items-center mb-6 border-b pb-3">
+                    <h4 class="font-bold text-slate-800 text-lg">الموردين والمشتريات</h4>
+                  </div>
+                
+                  <div class="flex justify-between items-center mb-4">
+                    <div class="flex gap-2 bg-slate-100 p-1.5 rounded-xl w-max">
+                      <button id="supSubTabList" onclick="switchSupTab('list')" class="px-4 py-2 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition">قائمة الموردين</button>
+                      <button id="supSubTabPurchases" onclick="switchSupTab('purchases')" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition">فواتير المشتريات</button>
+                    </div>
+                    <select id="supBranchFilter" onchange="renderAdminSuppliers()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 bg-white shadow-sm focus:outline-none focus:border-indigo-500 hidden">
+                      <option value="all">كل الفروع</option>
+                    </select>
+                  </div>
+                
+                  <div id="supListView">
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
+                          <tr>
+                            <th class="px-4 py-3">الشركة / المورد</th>
+                            <th class="px-4 py-3">الفرع</th>
+                            <th class="px-4 py-3">رقم الهاتف</th>
+                            <th class="px-4 py-3">الرصيد المستحق (₪)</th>
+                          </tr>
+                        </thead>
+                        <tbody id="adminSuppliersTable" class="divide-y divide-slate-100">
+                          <tr><td colspan="4" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                
+                  <div id="supPurchasesView" class="hidden">
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
+                          <tr>
+                            <th class="px-4 py-3">رقم الفاتورة</th>
+                            <th class="px-4 py-3">المورد</th>
+                            <th class="px-4 py-3">التاريخ</th>
+                            <th class="px-4 py-3">الإجمالي (₪)</th>
+                            <th class="px-4 py-3">المدفوع (₪)</th>
+                            <th class="px-4 py-3">المتبقي (₪)</th>
+                            <th class="px-4 py-3">الحالة</th>
+                            <th class="px-4 py-3">الفرع</th>
+                          </tr>
+                        </thead>
+                        <tbody id="adminPurchasesTable" class="divide-y divide-slate-100">
+                          <tr><td colspan="8" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
                 <div id="det-customers" class="det-content hidden">
                   <div class="flex justify-between items-center mb-6 border-b pb-3">
                     <h4 class="font-bold text-slate-800 text-lg">العملاء والديون</h4>

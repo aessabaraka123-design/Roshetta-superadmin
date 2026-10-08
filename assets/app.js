@@ -1111,6 +1111,8 @@ function switchDetTab(t) {
     } else if (t === "customers") {
     loadAdminCustomers();
     loadAdminDebtPayments();
+  } else if (t === "suppliers") {
+    if (typeof loadAdminSuppliers === "function") loadAdminSuppliers();
   } else if (t === 'invoices') {
     loadAdminSales();
   }
