@@ -2077,7 +2077,13 @@ async function loadAdminCustomers() {
   try {
     const res = await apiGetAdminCustomers(currentDetId);
     if (res.success) {
-      currentAdminCustomers = res.customers;
+      currentAdminCustomers = res.customers.map(c => {
+        if (!c.branch_name) {
+          if (c.branch_id && c.branch_id !== "all") c.branch_name = c.branch_id;
+          else c.branch_name = "الفرع الرئيسي";
+        }
+        return c;
+      });
       
       // Populate branches dropdown
       const branches = [...new Set(currentAdminCustomers.map(c => c.branch_name).filter(Boolean))];
@@ -2111,7 +2117,7 @@ function renderAdminCustomers() {
     tbody.innerHTML = list.map(c => `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
         <td class="px-4 py-3 font-semibold text-slate-700">${c.name}</td>
-        <td class="px-4 py-3 text-slate-500">${c.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-slate-500">${c.branch_name}</td>
         <td class="px-4 py-3 text-slate-600" dir="ltr">${c.phone || "-"}</td>
         <td class="px-4 py-3 font-bold ${c.debt > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(c.debt || 0)} ₪</td>
         <td class="px-4 py-3 text-slate-500">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("ar-EG") : "-"}</td>
@@ -2189,6 +2195,24 @@ async function loadAdminSuppliers() {
         currentAdminPurchases = pRes.purchases;
       }
       
+      // Fix branch names for suppliers
+      currentAdminSuppliers = currentAdminSuppliers.map(s => {
+        if (!s.branch_name) {
+          if (s.branch_id && s.branch_id !== "all") s.branch_name = s.branch_id;
+          else s.branch_name = "الفرع الرئيسي";
+        }
+        return s;
+      });
+      
+      // Fix branch names for purchases
+      currentAdminPurchases = currentAdminPurchases.map(p => {
+        if (!p.branch_name) {
+          if (p.branch_id && p.branch_id !== "all") p.branch_name = p.branch_id;
+          else p.branch_name = "الفرع الرئيسي";
+        }
+        return p;
+      });
+      
       // Populate branches dropdown using both suppliers and purchases
       const branches = [...new Set([
         ...currentAdminSuppliers.map(s => s.branch_name).filter(Boolean),
@@ -2229,7 +2253,7 @@ function renderAdminSuppliers() {
           <div class="font-semibold text-slate-700">${s.company || s.name}</div>
           ${s.company ? `<div class="text-xs text-slate-500">${s.name}</div>` : ''}
         </td>
-        <td class="px-4 py-3 text-slate-500">${s.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-slate-500">${s.branch_name}</td>
         <td class="px-4 py-3 text-slate-600" dir="ltr">${s.phone || "-"}</td>
         <td class="px-4 py-3 font-bold ${s.balance > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(s.balance || 0)} ₪</td>
       </tr>
@@ -2264,7 +2288,7 @@ function renderAdminPurchases() {
         <td class="px-4 py-3 text-emerald-600 font-semibold" dir="ltr">${new Intl.NumberFormat("en-US").format(p.paid_amount || 0)} ₪</td>
         <td class="px-4 py-3 ${p.remaining > 0 ? "text-red-600 font-bold" : "text-slate-500"}" dir="ltr">${new Intl.NumberFormat("en-US").format(p.remaining || 0)} ₪</td>
         <td class="px-4 py-3">${statusBadge}</td>
-        <td class="px-4 py-3 text-slate-500">${p.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-slate-500">${p.branch_name}</td>
       </tr>
       `;
     }).join("");
