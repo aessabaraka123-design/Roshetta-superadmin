@@ -132,6 +132,11 @@ async function apiRejectSubRequest(id) {
     method: "POST",
   }).then((r) => r.json());
 }
+async function apiDeleteSubRequest(id) {
+  return apiFetch(`/api/admin/subscription-requests/${id}`, {
+    method: "DELETE",
+  }).then((r) => r.json());
+}
 
 async function apiGetPharmacyDetails(id) {
   const [ph, branches, staff] = await Promise.all([

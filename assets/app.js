@@ -957,14 +957,17 @@ function renderReqList() {
       <td class="px-4 py-3 text-xs text-slate-500">${fd(r.createdAt)}</td>
       <td class="px-4 py-3"><span class="${r.status === "approved" ? "bg-emerald-100 text-emerald-700" : r.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"} text-xs font-semibold px-2.5 py-1 rounded-full">${r.status === "approved" ? "مفعل" : r.status === "rejected" ? "مرفوض" : "قيد المراجعة"}</span></td>
       <td class="px-4 py-3">
-        ${
-          r.status === "pending"
-            ? `
-        <button onclick="approveReq('${r.id}')" class="text-emerald-600 text-xs font-semibold hover:underline bg-emerald-50 px-2 py-1 rounded">تفعيل</button>
-        <button onclick="rejectReq('${r.id}')" class="text-red-600 text-xs font-semibold hover:underline bg-red-50 px-2 py-1 rounded ml-1">رفض</button>
-        `
-            : "-"
-        }
+        <div class="flex items-center gap-1.5 flex-wrap">
+          ${
+            r.status === "pending"
+              ? `
+          <button onclick="approveReq('${r.id}')" class="text-emerald-600 text-xs font-semibold hover:underline bg-emerald-50 px-2 py-1 rounded">تفعيل</button>
+          <button onclick="rejectReq('${r.id}')" class="text-amber-600 text-xs font-semibold hover:underline bg-amber-50 px-2 py-1 rounded">رفض</button>
+          `
+              : ""
+          }
+          <button onclick="deleteReq('${r.id}')" class="text-red-600 text-xs font-semibold hover:underline bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition" title="حذف الطلب">حذف</button>
+        </div>
       </td>
     </tr>`,
       )
@@ -994,6 +997,24 @@ async function rejectReq(id) {
   } catch (e) {
     toast("خطأ في الاتصال", "error");
   }
+}
+
+async function deleteReq(id) {
+  showConfirm("حذف الطلب", "هل أنت متأكد من حذف هذا الطلب نهائياً من السجل؟ لن تتمكن من التراجع عن هذا الإجراء.", "red", async () => {
+    try {
+      const d = await apiDeleteSubRequest(id);
+      if (d.success) {
+        toast("تم حذف الطلب بنجاح ✓");
+        closeConfirm();
+        loadSubRequests();
+        loadDash();
+      } else {
+        toast(d.error || "فشل حذف الطلب", "error");
+      }
+    } catch (e) {
+      toast("خطأ في الاتصال", "error");
+    }
+  });
 }
 
 let currentDetId = null;
