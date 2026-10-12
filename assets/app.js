@@ -1427,7 +1427,14 @@ function populateBranchSelect() {
 
 function openAddStaff() {
   currentEditStaffId = null;
-  document.querySelector("#staffModal h3").textContent = "إضافة موظف";
+  const h3 = document.querySelector("#staffModal h3");
+  if (h3) h3.textContent = "إضافة موظف جديد";
+  const sub = document.getElementById("staffModalSub");
+  if (sub) sub.textContent = "إنشاء حساب موظف وتحديد صلاحياته وفرعه";
+  const passHint = document.getElementById("stPassHint");
+  if (passHint) passHint.textContent = "كلمة المرور المطلوبة لتسجيل دخول الموظف *";
+  const passReq = document.getElementById("stPassReq");
+  if (passReq) passReq.textContent = "مطلوب";
   document.getElementById("stName").value = "";
   document.getElementById("stEmail").value = "";
   document.getElementById("stPass").value = "";
@@ -1438,7 +1445,14 @@ function openAddStaff() {
 }
 function openEditStaff(id, name, email, role, branchId, password) {
   currentEditStaffId = id;
-  document.querySelector("#staffModal h3").textContent = "تعديل موظف";
+  const h3 = document.querySelector("#staffModal h3");
+  if (h3) h3.textContent = "تعديل بيانات الموظف";
+  const sub = document.getElementById("staffModalSub");
+  if (sub) sub.textContent = "تعديل بيانات وحساب وصلاحيات الموظف في الصيدلية";
+  const passHint = document.getElementById("stPassHint");
+  if (passHint) passHint.textContent = "اتركها فارغة إذا لم تكن ترغب بتغيير كلمة المرور الحالية";
+  const passReq = document.getElementById("stPassReq");
+  if (passReq) passReq.textContent = "اختياري عند التعديل";
   document.getElementById("stName").value = (name && name !== 'null') ? name : "";
   document.getElementById("stEmail").value = (email && email !== 'null') ? email : "";
   document.getElementById("stPass").value = (password && password !== 'null') ? password : "";

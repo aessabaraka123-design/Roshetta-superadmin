@@ -952,33 +952,117 @@
       </div>
     </div>
 
-    <!-- Add Staff Modal -->
+    <!-- 👨‍⚕️ نافذة إضافة / تعديل موظف -->
     <div id="staffModal" class="fixed inset-0 hidden items-center justify-center z-[60]">
-      <div class="modal-bg absolute inset-0" onclick="closeStaffModal()"></div>
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 z-10 mx-4">
-        <h3 class="text-lg font-bold text-slate-900 mb-4">إضافة موظف</h3>
-        <div class="space-y-3 mb-5">
-          <input id="stName" placeholder="الاسم" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none" />
-          <input id="stEmail" placeholder="البريد الإلكتروني" type="email" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none" />
-          <div class="relative">
-            <input id="stPass" placeholder="كلمة المرور" type="password" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none pr-10" />
-            <button type="button" onclick="togglePassVisibility('stPass', this)" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-              </svg>
-            </button>
+      <div class="modal-bg absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeStaffModal()"></div>
+      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10 mx-4 border border-slate-100 max-h-[92vh] overflow-y-auto">
+        <!-- الهيدر -->
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+              👨‍⚕️
+            </div>
+            <div>
+              <h3 id="staffModalHeading" class="text-base font-black text-slate-800">إضافة موظف</h3>
+              <p id="staffModalSub" class="text-xs text-slate-400 mt-0.5">تحديد بيانات وحساب وصلاحيات الموظف في الصيدلية</p>
+            </div>
           </div>
-          <select id="stRole" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white">
-            <option value="pharmacist">صيدلاني</option>
-            <option value="cashier">كاشير</option>
-            <option value="manager">مدير</option>
-          </select>
-          <select id="stBranch" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white">
-            <option value="">جميع الفروع (أو الفرع الرئيسي)</option>
-          </select>
+          <button onclick="closeStaffModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <div class="flex gap-3"><button onclick="closeStaffModal()" class="flex-1 bg-slate-100 text-slate-600 rounded-xl py-2 font-bold text-sm">إلغاء</button><button onclick="saveStaff()" class="flex-1 bg-blue-600 text-white rounded-xl py-2 font-bold text-sm">حفظ</button></div>
+
+        <!-- حقول الإدخال المنظمة -->
+        <div class="space-y-4 mb-6">
+          <!-- 1. اسم الموظف -->
+          <div>
+            <label for="stName" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span>👤</span>
+                <span>اسم الموظف</span>
+                <span class="text-red-500 font-bold">*</span>
+              </span>
+              <span class="text-[11px] font-normal text-slate-400">مطلوب</span>
+            </label>
+            <input id="stName" type="text" placeholder="مثال: د. أحمد محمد / إبراهيم أبو لبدة" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl px-3.5 py-2.5 text-sm outline-none transition text-slate-800 font-medium placeholder:text-slate-300" />
+            <p class="text-[11px] text-slate-400 mt-1">الاسم الكامل للموظف كما سيظهر في فواتير المبيعات والتقارير</p>
+          </div>
+
+          <!-- 2. البريد الإلكتروني -->
+          <div>
+            <label for="stEmail" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span>📧</span>
+                <span>اسم الدخول / البريد الإلكتروني</span>
+                <span class="text-red-500 font-bold">*</span>
+              </span>
+              <span class="text-[11px] font-normal text-slate-400">مطلوب</span>
+            </label>
+            <input id="stEmail" type="text" placeholder="مثال: ahmed@gmail.com أو اسم الدخول" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl px-3.5 py-2.5 text-sm outline-none transition text-slate-800 font-medium placeholder:text-slate-300" />
+            <p class="text-[11px] text-slate-400 mt-1">يُستخدم لتسجيل دخول الموظف إلى شاشة الكاشير ونظام الصيدلية</p>
+          </div>
+
+          <!-- 3. كلمة المرور -->
+          <div>
+            <label for="stPass" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span>🔑</span>
+                <span>كلمة المرور</span>
+              </span>
+              <span id="stPassReq" class="text-[11px] font-normal text-slate-400">عند الإنشاء مطلوبة</span>
+            </label>
+            <div class="relative">
+              <input id="stPass" type="password" placeholder="أدخل كلمة المرور (مثال: 123456)" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl px-3.5 py-2.5 text-sm outline-none transition text-slate-800 font-medium pr-10 placeholder:text-slate-300" />
+              <button type="button" onclick="togglePassVisibility('stPass', this)" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <p id="stPassHint" class="text-[11px] text-slate-400 mt-1">اتركها فارغة إذا لم تكن ترغب بتغيير كلمة المرور الحالية عند التعديل</p>
+          </div>
+
+          <!-- 4. الدور والصلاحية -->
+          <div>
+            <label for="stRole" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span>🛡️</span>
+                <span>الدور والصلاحية</span>
+                <span class="text-red-500 font-bold">*</span>
+              </span>
+              <span class="text-[11px] font-normal text-slate-400">مطلوب</span>
+            </label>
+            <select id="stRole" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl px-3.5 py-2.5 text-sm outline-none transition text-slate-800 font-medium bg-white">
+              <option value="pharmacist">صيدلاني (إدارة الأدوية والمبيعات)</option>
+              <option value="cashier">كاشير (إجراء عمليات البيع فقط)</option>
+              <option value="branchManager">مدير فرع (إدارة فرع محدد)</option>
+              <option value="manager">مدير صيدلية (صلاحيات كاملة)</option>
+            </select>
+            <p class="text-[11px] text-slate-400 mt-1">يحدد الصلاحيات والشاشات المسموح للموظف الدخول إليها في النظام</p>
+          </div>
+
+          <!-- 5. الفرع التابع له -->
+          <div>
+            <label for="stBranch" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span>🏬</span>
+                <span>الفرع التابع له الموظف</span>
+              </span>
+              <span class="text-[11px] font-normal text-slate-400">اختياري</span>
+            </label>
+            <select id="stBranch" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl px-3.5 py-2.5 text-sm outline-none transition text-slate-800 font-medium bg-white">
+              <option value="">جميع الفروع (أو الفرع الرئيسي)</option>
+            </select>
+            <p class="text-[11px] text-slate-400 mt-1">تحديد الفرع الذي يرتبط به حساب الموظف ومبيعاته</p>
+          </div>
+        </div>
+
+        <!-- أزرار الإجراءات -->
+        <div class="flex gap-3 pt-3 border-t border-slate-100">
+          <button onclick="closeStaffModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl py-2.5 font-bold text-sm transition">إلغاء</button>
+          <button onclick="saveStaff()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 font-bold text-sm transition shadow-sm">حفظ التغييرات</button>
+        </div>
       </div>
     </div>
 
@@ -1196,8 +1280,8 @@
       </div>
     </div>
 
-    <script src="assets/api.js?v=5"></script>
-    <script src="assets/app.js?v=5"></script>
+    <script src="assets/api.js?v=6"></script>
+    <script src="assets/app.js?v=6"></script>
 
     <script>
       function toggleSidebar() {
