@@ -1493,14 +1493,20 @@ async function deleteStaff(id) {
 let currentEditBranchId = null;
 function openAddBranch() {
   currentEditBranchId = null;
-  document.querySelector("#branchModal h3").textContent = "إضافة فرع";
+  const h3 = document.querySelector("#branchModal h3");
+  if (h3) h3.textContent = "إضافة فرع جديد";
+  const sub = document.getElementById("branchModalSub");
+  if (sub) sub.textContent = "إضافة فرع جديد للصيدلية وتحديد موقعه الجغرافي";
   document.getElementById("brName").value = "";
   document.getElementById("brAddr").value = "";
   toggleModal('branchModal', true);
 }
 function openEditBranch(id, name, addr) {
   currentEditBranchId = id;
-  document.querySelector("#branchModal h3").textContent = "تعديل فرع";
+  const h3 = document.querySelector("#branchModal h3");
+  if (h3) h3.textContent = "تعديل بيانات الفرع";
+  const sub = document.getElementById("branchModalSub");
+  if (sub) sub.textContent = "تعديل اسم الفرع أو عنوانه وموقعه الجغرافي";
   document.getElementById("brName").value = name || "";
   document.getElementById("brAddr").value = addr || "";
   toggleModal('branchModal', true);
