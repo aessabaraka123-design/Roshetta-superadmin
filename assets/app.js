@@ -2339,24 +2339,96 @@ function renderAdminPurchases() {
   if (list.length > 0) {
     tbody.innerHTML = list.map(p => {
       let statusBadge = "";
-      if (p.status === "paid") statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded-md">مدفوعة</span>';
-      else if (p.status === "unpaid") statusBadge = '<span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded-md">غير مدفوعة</span>';
+      if (p.status === "paid" || p.status === "completed") statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-1 rounded-md">مدفوعة</span>';
+      else if (p.status === "unpaid" || p.status === "draft") statusBadge = '<span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded-md">غير مدفوعة</span>';
       else statusBadge = '<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-1 rounded-md">مدفوعة جزئياً</span>';
+      
+      const invNum = p.invoice_number || (p.id ? p.id.slice(0, 8) : "—");
       
       return `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-        <td class="px-4 py-3 font-mono text-sm font-semibold text-slate-600">#${p.invoice_number || p.id.slice(0,6)}</td>
+        <td class="px-4 py-3 font-mono text-sm font-semibold text-slate-700">#${invNum}</td>
         <td class="px-4 py-3 text-slate-700 font-semibold">${p.supplier_name || "-"}</td>
-        <td class="px-4 py-3 text-slate-500">${p.date ? new Date(p.date).toLocaleDateString("ar-EG") : "-"}</td>
-        <td class="px-4 py-3 font-bold text-slate-700" dir="ltr">${new Intl.NumberFormat("en-US").format(p.total_cost || 0)} ₪</td>
+        <td class="px-4 py-3 text-slate-500" dir="ltr">${p.date ? new Date(p.date).toLocaleDateString("ar-EG") : "-"}</td>
+        <td class="px-4 py-3 font-bold text-slate-800" dir="ltr">${new Intl.NumberFormat("en-US").format(p.total_cost || 0)} ₪</td>
         <td class="px-4 py-3 text-emerald-600 font-semibold" dir="ltr">${new Intl.NumberFormat("en-US").format(p.paid_amount || 0)} ₪</td>
         <td class="px-4 py-3 ${p.remaining > 0 ? "text-red-600 font-bold" : "text-slate-500"}" dir="ltr">${new Intl.NumberFormat("en-US").format(p.remaining || 0)} ₪</td>
         <td class="px-4 py-3">${statusBadge}</td>
-        <td class="px-4 py-3 text-slate-500">${p.branch_name}</td>
+        <td class="px-4 py-3 text-slate-500">${p.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-center">
+          <button onclick="viewAdminPurchase('${p.id}')" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm" title="عرض تفاصيل الفاتورة">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            عرض
+          </button>
+        </td>
       </tr>
       `;
     }).join("");
   } else {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">لا توجد فواتير مشتريات</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400">لا توجد فواتير مشتريات</td></tr>`;
   }
+}
+
+function viewAdminPurchase(purchaseId) {
+  const p = currentAdminPurchases.find(x => x.id === purchaseId);
+  if (!p) return;
+
+  const invNum = p.invoice_number || (p.id ? p.id.slice(0, 8) : "—");
+  document.getElementById("pinvDetNumber").textContent = "#" + invNum;
+  document.getElementById("pinvDetSupplier").textContent = p.supplier_name || "غير محدد";
+  document.getElementById("pinvDetDate").textContent = p.date ? new Date(p.date).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" }) : "—";
+  document.getElementById("pinvDetBranch").textContent = p.branch_name || "الفرع الرئيسي";
+  
+  const fMoney = (val) => new Intl.NumberFormat("en-US").format(val || 0) + " ₪";
+  document.getElementById("pinvDetTotal").textContent = fMoney(p.total_cost);
+  document.getElementById("pinvDetPaid").textContent = fMoney(p.paid_amount);
+  document.getElementById("pinvDetRemaining").textContent = fMoney(p.remaining);
+  
+  let statusBadge = "";
+  if (p.status === "paid" || p.status === "completed") statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-md">مدفوعة بالكامل</span>';
+  else if (p.status === "unpaid" || p.status === "draft") statusBadge = '<span class="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-md">غير مدفوعة</span>';
+  else statusBadge = '<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-md">مدفوعة جزئياً</span>';
+  document.getElementById("pinvDetStatus").innerHTML = statusBadge;
+
+  const notesEl = document.getElementById("pinvDetNotes");
+  if (p.notes && p.notes.trim()) {
+    notesEl.textContent = p.notes;
+    document.getElementById("pinvDetNotesWrap").classList.remove("hidden");
+  } else {
+    document.getElementById("pinvDetNotesWrap").classList.add("hidden");
+  }
+
+  let items = [];
+  try {
+    if (typeof p.items === 'string') {
+      items = JSON.parse(p.items);
+      if (typeof items === 'string') items = JSON.parse(items);
+    } else if (Array.isArray(p.items)) {
+      items = p.items;
+    }
+  } catch(e) {}
+  if (!Array.isArray(items)) items = [];
+
+  const tbody = document.getElementById("pinvDetItems");
+  if (items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">لا توجد أصناف مسجلة في هذه الفاتورة</td></tr>`;
+  } else {
+    tbody.innerHTML = items.map((item, idx) => {
+      const name = item.name || item.drug_name || item.displayName || "صنف غير معروف";
+      const qty = item.qty || item.quantity || item.cartQty || 1;
+      const cost = item.purchase_price ?? item.cost ?? item.costPrice ?? 0;
+      const total = qty * Number(cost);
+      return `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 text-xs">
+        <td class="px-4 py-2.5 text-slate-400 font-mono text-center">${idx + 1}</td>
+        <td class="px-4 py-2.5 font-bold text-slate-800">${name}</td>
+        <td class="px-4 py-2.5 font-semibold text-slate-700">${qty}</td>
+        <td class="px-4 py-2.5 font-mono text-slate-600" dir="ltr">${fMoney(cost)}</td>
+        <td class="px-4 py-2.5 font-bold text-slate-900" dir="ltr">${fMoney(total)}</td>
+      </tr>
+      `;
+    }).join("");
+  }
+
+  toggleModal("purchaseInvoiceModal", true);
 }

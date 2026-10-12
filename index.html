@@ -497,10 +497,11 @@
                             <th class="px-4 py-3">المتبقي (₪)</th>
                             <th class="px-4 py-3">الحالة</th>
                             <th class="px-4 py-3">الفرع</th>
+                            <th class="px-4 py-3 text-center">إجراءات</th>
                           </tr>
                         </thead>
                         <tbody id="adminPurchasesTable" class="divide-y divide-slate-100">
-                          <tr><td colspan="8" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>
+                          <tr><td colspan="9" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -978,6 +979,88 @@
           </select>
         </div>
         <div class="flex gap-3"><button onclick="closeStaffModal()" class="flex-1 bg-slate-100 text-slate-600 rounded-xl py-2 font-bold text-sm">إلغاء</button><button onclick="saveStaff()" class="flex-1 bg-blue-600 text-white rounded-xl py-2 font-bold text-sm">حفظ</button></div>
+      </div>
+    </div>
+
+    <!-- 🚚 تفاصيل فاتورة المشتريات -->
+    <div id="purchaseInvoiceModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🚚</span>
+            <h3 class="text-lg font-black text-slate-800">تفاصيل فاتورة المشتريات <span id="pinvDetNumber" class="text-blue-600 font-mono text-base ml-1"></span></h3>
+          </div>
+          <button onclick="toggleModal('purchaseInvoiceModal', false)" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-200 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-6">
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <span class="text-slate-400 text-xs font-semibold block mb-1">المورد</span>
+              <div id="pinvDetSupplier" class="font-bold text-slate-800 text-sm truncate"></div>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <span class="text-slate-400 text-xs font-semibold block mb-1">التاريخ</span>
+              <div id="pinvDetDate" class="font-bold text-slate-800 text-sm" dir="ltr"></div>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <span class="text-slate-400 text-xs font-semibold block mb-1">الفرع</span>
+              <div id="pinvDetBranch" class="font-bold text-slate-800 text-sm truncate"></div>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <span class="text-slate-400 text-xs font-semibold block mb-1">حالة الدفع</span>
+              <div id="pinvDetStatus" class="mt-0.5"></div>
+            </div>
+          </div>
+
+          <!-- Financial Row -->
+          <div class="grid grid-cols-3 gap-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4 text-center">
+            <div>
+              <span class="text-slate-500 text-xs font-semibold block mb-1">إجمالي الفاتورة</span>
+              <div id="pinvDetTotal" class="font-black text-slate-900 text-base" dir="ltr"></div>
+            </div>
+            <div>
+              <span class="text-emerald-600 text-xs font-semibold block mb-1">المبلغ المدفوع</span>
+              <div id="pinvDetPaid" class="font-black text-emerald-700 text-base" dir="ltr"></div>
+            </div>
+            <div>
+              <span class="text-red-500 text-xs font-semibold block mb-1">المبلغ المتبقي</span>
+              <div id="pinvDetRemaining" class="font-black text-red-600 text-base" dir="ltr"></div>
+            </div>
+          </div>
+
+          <!-- Notes if any -->
+          <div id="pinvDetNotesWrap" class="hidden bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-800">
+            <span class="font-bold block mb-0.5">ملاحظات:</span>
+            <span id="pinvDetNotes"></span>
+          </div>
+
+          <!-- Items Table -->
+          <div>
+            <h4 class="font-bold text-slate-800 mb-3 text-sm flex items-center gap-1.5">
+              <span>📦</span> الأصناف المشتراة في الفاتورة
+            </h4>
+            <div class="overflow-x-auto border border-slate-100 rounded-xl">
+              <table class="w-full text-right text-xs">
+                <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
+                  <tr>
+                    <th class="px-4 py-2.5 w-12 text-center">#</th>
+                    <th class="px-4 py-2.5">اسم الصنف</th>
+                    <th class="px-4 py-2.5">الكمية</th>
+                    <th class="px-4 py-2.5">سعر الشراء</th>
+                    <th class="px-4 py-2.5">الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody id="pinvDetItems" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+          <button onclick="toggleModal('purchaseInvoiceModal', false)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-6 py-2 rounded-xl text-sm transition">إغلاق</button>
+        </div>
       </div>
     </div>
 
