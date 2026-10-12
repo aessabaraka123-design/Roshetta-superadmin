@@ -788,6 +788,9 @@ function subBadge(t) {
   return `<span class="${m[t] || m.monthly} text-xs font-semibold px-2.5 py-1 rounded-full">${text}</span>`;
 }
 function roleBadge(r) {
+  if (!r || r === "null" || r === "undefined") {
+    return '<span class="bg-slate-100 text-slate-500 text-xs font-semibold px-2.5 py-1 rounded-full">غير محدد</span>';
+  }
   const m = {
     manager: "bg-blue-100 text-blue-700",
     pharmacist: "bg-slate-100 text-slate-600",
@@ -1020,6 +1023,7 @@ async function deleteReq(id) {
 let currentDetId = null;
 let currentDetPh = null;
 let currentDetBranches = [];
+let currentDetStaff = [];
 
 async function openPharmacyDetail(id) {
   currentDetId = id;
@@ -1040,6 +1044,7 @@ async function openPharmacyDetail(id) {
     const d = await apiGetPharmacyDetails(id);
     currentDetPh = d.pharmacy;
     currentDetBranches = d.branches || [];
+    currentDetStaff = d.staff || [];
 
     // Header
     document.getElementById("detName").textContent = currentDetPh.name;
@@ -1076,16 +1081,16 @@ async function openPharmacyDetail(id) {
       stb.innerHTML = d.staff
         .map(
           (s) => `<tr>
-      <td class="px-4 py-3 font-medium">${s.name}</td>
-      <td class="px-4 py-3 text-slate-500">${s.email}</td>
-      <td class="px-4 py-3">${roleBadge(s.role)} ${s.status === "active" ? '<span class="text-emerald-500 text-xs">نشط</span>' : '<span class="text-red-500 text-xs">متوقف</span>'}</td>
+      <td class="px-4 py-3 font-medium">${(s.name && s.name !== 'null') ? s.name : '<span class="text-amber-600 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">بدون اسم (اضغط تعديل)</span>'}</td>
+      <td class="px-4 py-3 text-slate-500">${(s.email && s.email !== 'null') ? s.email : '—'}</td>
+      <td class="px-4 py-3">${roleBadge(s.role)} ${s.status === "active" ? '<span class="text-emerald-600 text-xs font-semibold mr-1">نشط</span>' : '<span class="text-red-500 text-xs font-semibold mr-1">متوقف</span>'}</td>
       <td class="px-4 py-3">
-        <div class="flex gap-2">
-          <button onclick="openEditStaff('${s.id}', '${(s.name || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${(s.email || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${s.role}', '${s.branch || ''}', '${(s.password || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}')" class="text-blue-500 text-xs font-semibold hover:underline">تعديل</button>
+        <div class="flex gap-2 items-center">
+          <button onclick="openEditStaff('${s.id}', '${(s.name && s.name !== 'null' ? s.name : '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${(s.email && s.email !== 'null' ? s.email : '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${s.role && s.role !== 'null' ? s.role : 'pharmacist'}', '${s.branch || ''}', '${(s.password || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}')" class="text-blue-600 text-xs font-bold hover:underline">تعديل</button>
           <span class="text-slate-200">|</span>
-          <button onclick="toggleStaffStatus('${s.id}', '${s.status}')" class="${s.status === "active" ? "text-amber-500" : "text-emerald-500"} text-xs font-semibold hover:underline">${s.status === "active" ? "إيقاف" : "تفعيل"}</button>
+          <button onclick="toggleStaffStatus('${s.id}', '${s.status}')" class="${s.status === "active" ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${s.status === "active" ? "إيقاف" : "تفعيل"}</button>
           <span class="text-slate-200">|</span>
-          <button onclick="deleteStaff('${s.id}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
+          <button onclick="deleteStaff('${s.id}')" class="text-red-500 text-xs font-bold hover:underline">حذف</button>
         </div>
       </td>
     </tr>`,
@@ -1428,13 +1433,13 @@ function openAddStaff() {
 }
 function openEditStaff(id, name, email, role, branchId, password) {
   currentEditStaffId = id;
-    document.querySelector("#staffModal h3").textContent = "تعديل موظف";
-  document.getElementById("stName").value = name || "";
-  document.getElementById("stEmail").value = email || "";
-  document.getElementById("stPass").value = password || "";
-  document.getElementById("stRole").value = role || "pharmacist";
+  document.querySelector("#staffModal h3").textContent = "تعديل موظف";
+  document.getElementById("stName").value = (name && name !== 'null') ? name : "";
+  document.getElementById("stEmail").value = (email && email !== 'null') ? email : "";
+  document.getElementById("stPass").value = (password && password !== 'null') ? password : "";
+  document.getElementById("stRole").value = (role && role !== 'null') ? role : "pharmacist";
   populateBranchSelect();
-  document.getElementById("stBranch").value = branchId || "";
+  document.getElementById("stBranch").value = (branchId && branchId !== 'null') ? branchId : "";
   toggleModal('staffModal', true);
 }
 function closeStaffModal() {
@@ -1465,16 +1470,25 @@ async function saveStaff() {
 }
 async function toggleStaffStatus(staffId, currentStatus) {
   const newStatus = currentStatus === "active" ? "suspended" : "active";
+  const existing = (currentDetStaff || []).find((s) => s.id === staffId) || {};
   try {
     const d = await apiUpdateStaff(currentDetId, staffId, {
+      name: (existing.name && existing.name !== 'null') ? existing.name : "",
+      email: (existing.email && existing.email !== 'null') ? existing.email : "",
+      password: existing.password || "",
+      role: (existing.role && existing.role !== 'null') ? existing.role : "pharmacist",
+      branch: existing.branch || "",
+      phone: existing.phone || "",
+      salary: existing.salary || 0,
       status: newStatus,
+      active: newStatus === "active" ? 1 : 0,
     });
     if (d.success) {
-      toast("تم تغيير حالة الموظف");
+      toast(newStatus === "active" ? "تم تفعيل حساب الموظف" : "تم إيقاف حساب الموظف");
       openPharmacyDetail(currentDetId);
-    } else toast(d.error, "error");
+    } else toast(d.error || "فشل التحديث", "error");
   } catch (e) {
-    toast("خطأ", "error");
+    toast("حدث خطأ أثناء تغيير الحالة", "error");
   }
 }
 async function deleteStaff(id) {
