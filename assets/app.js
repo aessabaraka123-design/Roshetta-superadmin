@@ -1258,15 +1258,20 @@ let currentAdminSales = [];
 
 async function loadAdminSales() {
   const tbl = document.getElementById("detInvoicesTbl");
+  if (!tbl) return;
   tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>جاري التحميل...</td></tr>`;
   
   try {
     const res = await apiGetAdminSales(currentDetId);
-    if (!res.success) throw new Error();
+    if (!res || !res.success) {
+      currentAdminSales = [];
+      tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
+      return;
+    }
     currentAdminSales = res.sales || [];
     
     if (currentAdminSales.length === 0) {
-      tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات لهذه الصيدلية.</td></tr>`;
+      tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
       return;
     }
     
@@ -1275,7 +1280,7 @@ async function loadAdminSales() {
     
     tbl.innerHTML = currentAdminSales.map(s => `
       <tr class="hover:bg-slate-50 transition group">
-        <td class="px-4 py-3 font-mono text-xs text-slate-500 rounded-r-xl">#${s.id.slice(0, 8)}</td>
+        <td class="px-4 py-3 font-mono text-xs text-slate-500 rounded-r-xl">#${(s.id || "").slice(0, 8)}</td>
         <td class="px-4 py-3 text-slate-600" dir="ltr">${fDate(s.date)}</td>
         <td class="px-4 py-3 font-bold text-emerald-600" dir="ltr">${fMoney(s.total)}</td>
         <td class="px-4 py-3 text-slate-500">${s.paymentMethod === "card" ? "💳 بطاقة" : s.paymentMethod === "debt" ? "📒 ذمم" : "💵 كاش"}</td>
@@ -1294,7 +1299,7 @@ async function loadAdminSales() {
     `).join("");
     
   } catch(e) {
-    tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل الفواتير.</td></tr>`;
+    tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
   }
 }
 
