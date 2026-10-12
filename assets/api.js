@@ -293,7 +293,43 @@ async function apiGetAdminSuppliers(phId) {
 }
 
 async function apiGetAdminPurchases(phId) {
-  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/purchases");
-  return res.json();
+  try {
+    const [adminRes, phRes] = await Promise.allSettled([
+      apiFetch("/api/admin/pharmacies/" + phId + "/purchases").then((r) => r.json()),
+      apiFetch("/api/pharmacies/" + phId + "/purchase-invoices").then((r) => r.json()),
+    ]);
+
+    const adminPurchases = (adminRes.status === "fulfilled" && adminRes.value && adminRes.value.purchases) ? adminRes.value.purchases : [];
+    const phInvoices = (phRes.status === "fulfilled" && phRes.value && phRes.value.invoices) ? phRes.value.invoices : [];
+
+    const map = new Map();
+    phInvoices.forEach(inv => {
+      if (inv.id) map.set(inv.id, inv);
+      if (inv.invoice_number) map.set(String(inv.invoice_number), inv);
+    });
+
+    if (adminPurchases.length > 0) {
+      const merged = adminPurchases.map(p => {
+        const full = map.get(p.id) || map.get(String(p.invoice_number)) || {};
+        return {
+          ...p,
+          items: (p.items && p.items.length > 0) ? p.items : (full.items || []),
+          notes: p.notes || full.notes || "",
+          branch_name: p.branch_name || full.branch_name || full.branch_id || "",
+        };
+      });
+      return { success: true, purchases: merged };
+    } else {
+      return { success: true, purchases: phInvoices };
+    }
+  } catch (err) {
+    console.error("apiGetAdminPurchases error:", err);
+    try {
+      const fallback = await apiFetch("/api/pharmacies/" + phId + "/purchase-invoices").then(r => r.json());
+      return { success: true, purchases: fallback.invoices || [] };
+    } catch (e2) {
+      return { success: false, purchases: [] };
+    }
+  }
 }
 

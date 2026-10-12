@@ -2369,8 +2369,8 @@ function renderAdminPurchases() {
   }
 }
 
-function viewAdminPurchase(purchaseId) {
-  const p = currentAdminPurchases.find(x => x.id === purchaseId);
+async function viewAdminPurchase(purchaseId) {
+  const p = currentAdminPurchases.find(x => x.id === purchaseId || x.invoice_number === purchaseId);
   if (!p) return;
 
   const invNum = p.invoice_number || (p.id ? p.id.slice(0, 8) : "—");
@@ -2390,14 +2390,6 @@ function viewAdminPurchase(purchaseId) {
   else statusBadge = '<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-md">مدفوعة جزئياً</span>';
   document.getElementById("pinvDetStatus").innerHTML = statusBadge;
 
-  const notesEl = document.getElementById("pinvDetNotes");
-  if (p.notes && p.notes.trim()) {
-    notesEl.textContent = p.notes;
-    document.getElementById("pinvDetNotesWrap").classList.remove("hidden");
-  } else {
-    document.getElementById("pinvDetNotesWrap").classList.add("hidden");
-  }
-
   let items = [];
   try {
     if (typeof p.items === 'string') {
@@ -2407,6 +2399,36 @@ function viewAdminPurchase(purchaseId) {
       items = p.items;
     }
   } catch(e) {}
+
+  // If items are empty, fetch directly from pharmacy purchase-invoices as guaranteed fallback
+  if ((!items || items.length === 0) && currentDetId) {
+    try {
+      const res = await apiFetch("/api/pharmacies/" + currentDetId + "/purchase-invoices");
+      const data = await res.json();
+      if (data && data.invoices) {
+        const found = data.invoices.find(x => x.id === p.id || (p.invoice_number && x.invoice_number === p.invoice_number));
+        if (found) {
+          if (found.items) {
+            p.items = found.items;
+            if (typeof found.items === 'string') items = JSON.parse(found.items);
+            else if (Array.isArray(found.items)) items = found.items;
+          }
+          if (found.notes) p.notes = found.notes;
+        }
+      }
+    } catch(err) {
+      console.warn("Direct purchase-invoices fallback failed:", err);
+    }
+  }
+
+  const notesEl = document.getElementById("pinvDetNotes");
+  if (p.notes && p.notes.trim()) {
+    notesEl.textContent = p.notes;
+    document.getElementById("pinvDetNotesWrap").classList.remove("hidden");
+  } else {
+    document.getElementById("pinvDetNotesWrap").classList.add("hidden");
+  }
+
   if (!Array.isArray(items)) items = [];
 
   const tbody = document.getElementById("pinvDetItems");
