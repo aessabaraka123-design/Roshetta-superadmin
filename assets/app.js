@@ -1076,19 +1076,23 @@ async function openPharmacyDetail(id) {
     const stb = document.getElementById("detStaffTbl");
     if (!d.staff.length)
       stb.innerHTML =
-        '<tr><td colspan="3" class="text-center py-4 text-slate-400">لا يوجد موظفين</td></tr>';
-    else
+        '<tr><td colspan="4" class="text-center py-4 text-slate-400">لا يوجد موظفين</td></tr>';
+    else {
+      window.__staffMap = {};
+      d.staff.forEach((s) => {
+        window.__staffMap[s.id] = s;
+      });
       stb.innerHTML = d.staff
         .map(
           (s) => `<tr>
       <td class="px-4 py-3 font-medium">${(s.name && s.name !== 'null') ? s.name : '<span class="text-amber-600 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">بدون اسم (اضغط تعديل)</span>'}</td>
       <td class="px-4 py-3 text-slate-500">${(s.email && s.email !== 'null') ? s.email : '—'}</td>
-      <td class="px-4 py-3">${roleBadge(s.role)} ${s.status === "active" ? '<span class="text-emerald-600 text-xs font-semibold mr-1">نشط</span>' : '<span class="text-red-500 text-xs font-semibold mr-1">متوقف</span>'}</td>
+      <td class="px-4 py-3">${roleBadge(s.role)} ${(s.status === "active" || s.active == 1) ? '<span class="text-emerald-600 text-xs font-semibold mr-1">نشط</span>' : '<span class="text-red-500 text-xs font-semibold mr-1">متوقف</span>'}</td>
       <td class="px-4 py-3">
         <div class="flex gap-2 items-center">
           <button onclick="openEditStaff('${s.id}', '${(s.name && s.name !== 'null' ? s.name : '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${(s.email && s.email !== 'null' ? s.email : '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${s.role && s.role !== 'null' ? s.role : 'pharmacist'}', '${s.branch || ''}', '${(s.password || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}')" class="text-blue-600 text-xs font-bold hover:underline">تعديل</button>
           <span class="text-slate-200">|</span>
-          <button onclick="toggleStaffStatus('${s.id}', '${s.status}')" class="${s.status === "active" ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${s.status === "active" ? "إيقاف" : "تفعيل"}</button>
+          <button onclick="toggleStaffStatus('${s.id}')" class="${(s.status === "active" || s.active == 1) ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${(s.status === "active" || s.active == 1) ? "إيقاف" : "تفعيل"}</button>
           <span class="text-slate-200">|</span>
           <button onclick="deleteStaff('${s.id}')" class="text-red-500 text-xs font-bold hover:underline">حذف</button>
         </div>
@@ -1096,6 +1100,7 @@ async function openPharmacyDetail(id) {
     </tr>`,
         )
         .join("");
+    }
 
     // Branches
     const btb = document.getElementById("detBranchesTbl");
@@ -1468,25 +1473,53 @@ async function saveStaff() {
     toast("خطأ", "error");
   }
 }
-async function toggleStaffStatus(staffId, currentStatus) {
-  const newStatus = currentStatus === "active" ? "suspended" : "active";
-  const existing = (currentDetStaff || []).find((s) => s.id === staffId) || {};
+async function toggleStaffStatus(staffId) {
+  let existing = (window.__staffMap && window.__staffMap[staffId]) || (currentDetStaff || []).find((s) => String(s.id) === String(staffId));
+  
+  if (!existing || !existing.name || existing.name === 'null') {
+    try {
+      const res = await apiFetch(`/api/admin/pharmacies/${currentDetId}/staff`).then(r => r.json());
+      if (res && res.staff) {
+        currentDetStaff = res.staff;
+        window.__staffMap = {};
+        res.staff.forEach((s) => { window.__staffMap[s.id] = s; });
+        existing = window.__staffMap[staffId];
+      }
+    } catch(e) {}
+  }
+
+  if (!existing) {
+    return toast("لم يتم العثور على بيانات الموظف", "error");
+  }
+
+  const isCurrentlyActive = (existing.status === "active" || existing.active == 1);
+  const newStatus = isCurrentlyActive ? "suspended" : "active";
+  const newActive = isCurrentlyActive ? 0 : 1;
+
   try {
-    const d = await apiUpdateStaff(currentDetId, staffId, {
-      name: (existing.name && existing.name !== 'null') ? existing.name : "",
-      email: (existing.email && existing.email !== 'null') ? existing.email : "",
-      password: existing.password || "",
+    const payload = {
+      name: (existing.name && existing.name !== 'null') ? existing.name : "موظف",
+      email: (existing.email && existing.email !== 'null') ? existing.email : (existing.name || "staff"),
+      password: existing.password || "12345",
       role: (existing.role && existing.role !== 'null') ? existing.role : "pharmacist",
-      branch: existing.branch || "",
+      branch: (existing.branch && existing.branch !== 'null') ? existing.branch : "",
       phone: existing.phone || "",
       salary: existing.salary || 0,
       status: newStatus,
-      active: newStatus === "active" ? 1 : 0,
-    });
+      active: newActive,
+    };
+
+    const d = await apiUpdateStaff(currentDetId, staffId, payload);
     if (d.success) {
-      toast(newStatus === "active" ? "تم تفعيل حساب الموظف" : "تم إيقاف حساب الموظف");
+      if (window.__staffMap && window.__staffMap[staffId]) {
+        window.__staffMap[staffId].status = newStatus;
+        window.__staffMap[staffId].active = newActive;
+      }
+      toast(newStatus === "active" ? "تم تفعيل حساب الموظف بنجاح" : "تم إيقاف حساب الموظف بنجاح");
       openPharmacyDetail(currentDetId);
-    } else toast(d.error || "فشل التحديث", "error");
+    } else {
+      toast(d.error || "فشل التحديث", "error");
+    }
   } catch (e) {
     toast("حدث خطأ أثناء تغيير الحالة", "error");
   }
