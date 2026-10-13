@@ -283,8 +283,79 @@ async function apiGetAdminCustomers(phId) {
   return res.json();
 }
 async function apiGetAdminDebtPayments(phId) {
-  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/debt-payments");
-  return res.json();
+  try {
+    const [debtRes, salesRes] = await Promise.allSettled([
+      apiFetch("/api/admin/pharmacies/" + phId + "/debt-payments").then((r) => r.json()),
+      apiFetch("/api/pharmacies/" + phId + "/sales").then((r) => r.json()),
+    ]);
+
+    let payments = [];
+    if (debtRes.status === "fulfilled" && debtRes.value && debtRes.value.payments) {
+      payments = [...debtRes.value.payments];
+    }
+
+    if (salesRes.status === "fulfilled" && salesRes.value && salesRes.value.sales) {
+      const debtSales = salesRes.value.sales.filter(s => s.status === "debt_payment" || s.paymentMethod === "debt_payment");
+      debtSales.forEach(s => {
+        let custName = "عميل";
+        let custId = null;
+        if (typeof s.customer === "string") {
+          try {
+            const parsed = JSON.parse(s.customer);
+            custName = parsed.name || "عميل";
+            custId = parsed.id;
+          } catch(e) {
+            custName = s.customer;
+          }
+        } else if (s.customer && typeof s.customer === "object") {
+          custName = s.customer.name || "عميل";
+          custId = s.customer.id;
+        }
+
+        const exists = payments.some(p => p.id === s.id || (p.date === s.date && p.amount === s.total));
+        if (!exists) {
+          payments.push({
+            id: s.id,
+            pharmacy_id: s.pharmacy_id,
+            customer_id: custId,
+            customer_name: custName,
+            amount: s.total,
+            date: s.date,
+            method: s.paymentMethod,
+            cashier: s.cashierName,
+            branch: s.branchName
+          });
+        }
+      });
+    }
+
+    payments.sort((a, b) => ((b.date || "") > (a.date || "") ? 1 : ((b.date || "") < (a.date || "") ? -1 : 0)));
+    return { success: true, payments };
+  } catch (err) {
+    console.error("apiGetAdminDebtPayments error:", err);
+    try {
+      const fallback = await apiFetch("/api/pharmacies/" + phId + "/sales").then(r => r.json());
+      const debtSales = (fallback.sales || []).filter(s => s.status === "debt_payment").map(s => {
+        let custName = "عميل";
+        if (typeof s.customer === "string") {
+          try { custName = JSON.parse(s.customer).name || "عميل"; } catch(e) { custName = s.customer; }
+        } else if (s.customer && typeof s.customer === "object") {
+          custName = s.customer.name || "عميل";
+        }
+        return {
+          id: s.id,
+          customer_name: custName,
+          amount: s.total,
+          date: s.date,
+          method: s.paymentMethod,
+          branch: s.branchName
+        };
+      });
+      return { success: true, payments: debtSales };
+    } catch (e2) {
+      return { success: false, payments: [] };
+    }
+  }
 }
 
 async function apiGetAdminSuppliers(phId) {

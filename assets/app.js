@@ -2198,6 +2198,7 @@ function switchCustTab(tab) {
     document.getElementById("custSubTabPayments").classList.replace("bg-transparent", "bg-white");
     document.getElementById("custSubTabPayments").classList.replace("text-slate-500", "text-indigo-600");
     document.getElementById("custSubTabPayments").classList.add("shadow-sm");
+    loadAdminDebtPayments();
   }
 }
 
@@ -2266,22 +2267,25 @@ function renderAdminCustomers() {
 async function loadAdminDebtPayments() {
   if (!currentDetId) return;
   const tbody = document.getElementById("adminDebtPaymentsTable");
-  tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-slate-400">جاري التحميل...</td></tr>`;
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto mb-2"></div>جاري التحميل...</td></tr>`;
   try {
     const res = await apiGetAdminDebtPayments(currentDetId);
-    if (res.success && res.payments.length > 0) {
+    if (res.success && res.payments && res.payments.length > 0) {
       tbody.innerHTML = res.payments.map(p => `
         <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-          <td class="px-4 py-3 font-semibold text-slate-700">${p.customer_name || "عميل محذوف"}</td>
-          <td class="px-4 py-3 font-bold text-green-600" dir="ltr">${new Intl.NumberFormat("en-US").format(p.amount || 0)} ₪</td>
-          <td class="px-4 py-3 text-slate-500">${p.date ? new Date(p.date).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</td>
+          <td class="px-4 py-3 font-semibold text-slate-800">${p.customer_name || "عميل محذوف"}</td>
+          <td class="px-4 py-3">${formatPayMethod(p.method || p.payment_method)}</td>
+          <td class="px-4 py-3 text-slate-600 text-xs">${p.branch || p.branch_name || "الفرع الرئيسي"}</td>
+          <td class="px-4 py-3 font-bold text-emerald-600" dir="ltr">${new Intl.NumberFormat("en-US").format(p.amount || 0)} ₪</td>
+          <td class="px-4 py-3 text-slate-500 text-xs" dir="ltr">${p.date ? new Date(p.date).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</td>
         </tr>
       `).join("");
     } else {
-      tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-slate-400">لا يوجد سجل دفعات</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">لا يوجد سجل دفعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
     }
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل الدفعات</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-500">حدث خطأ أثناء تحميل سجل الدفعات</td></tr>`;
   }
 }
 
