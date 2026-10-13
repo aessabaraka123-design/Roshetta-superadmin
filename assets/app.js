@@ -285,7 +285,7 @@ async function loadDash() {
 
     // Recent Pharmacies Table
     const recent = [...pharms]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .sort((a, b) => ((b.createdAt || "") > (a.createdAt || "") ? 1 : ((b.createdAt || "") < (a.createdAt || "") ? -1 : 0)))
       .slice(0, 5);
     document.getElementById("dashTbl").innerHTML = recent.length
       ? recent
@@ -363,7 +363,7 @@ function renderPharmsList() {
       (p.name || "").toLowerCase().includes(q) ||
       (p.owner || "").toLowerCase().includes(q) ||
       (p.phone || "").includes(q),
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  ).sort((a, b) => ((b.createdAt || "") > (a.createdAt || "") ? 1 : ((b.createdAt || "") < (a.createdAt || "") ? -1 : 0)));
 
   const paged = paginateData(
     filtered,
@@ -1427,7 +1427,7 @@ function populateBranchSelect() {
 
 function openAddStaff() {
   currentEditStaffId = null;
-  const h3 = document.querySelector("#staffModal h3");
+  const h3 = document.getElementById("staffModalHeading") || document.querySelector("#staffModal h3");
   if (h3) h3.textContent = "إضافة موظف جديد";
   const sub = document.getElementById("staffModalSub");
   if (sub) sub.textContent = "إنشاء حساب موظف وتحديد صلاحياته وفرعه";
@@ -1445,7 +1445,7 @@ function openAddStaff() {
 }
 function openEditStaff(id, name, email, role, branchId, password) {
   currentEditStaffId = id;
-  const h3 = document.querySelector("#staffModal h3");
+  const h3 = document.getElementById("staffModalHeading") || document.querySelector("#staffModal h3");
   if (h3) h3.textContent = "تعديل بيانات الموظف";
   const sub = document.getElementById("staffModalSub");
   if (sub) sub.textContent = "تعديل بيانات وحساب وصلاحيات الموظف في الصيدلية";
@@ -1554,7 +1554,7 @@ async function deleteStaff(id) {
 let currentEditBranchId = null;
 function openAddBranch() {
   currentEditBranchId = null;
-  const h3 = document.querySelector("#branchModal h3");
+  const h3 = document.getElementById("branchModalHeading") || document.querySelector("#branchModal h3");
   if (h3) h3.textContent = "إضافة فرع جديد";
   const sub = document.getElementById("branchModalSub");
   if (sub) sub.textContent = "إضافة فرع جديد للصيدلية وتحديد موقعه الجغرافي";
@@ -1564,7 +1564,7 @@ function openAddBranch() {
 }
 function openEditBranch(id, name, addr) {
   currentEditBranchId = id;
-  const h3 = document.querySelector("#branchModal h3");
+  const h3 = document.getElementById("branchModalHeading") || document.querySelector("#branchModal h3");
   if (h3) h3.textContent = "تعديل بيانات الفرع";
   const sub = document.getElementById("branchModalSub");
   if (sub) sub.textContent = "تعديل اسم الفرع أو عنوانه وموقعه الجغرافي";
