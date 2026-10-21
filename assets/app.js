@@ -2525,3 +2525,20 @@ async function viewAdminPurchase(purchaseId) {
 
   toggleModal("purchaseInvoiceModal", true);
 }
+
+async function cleanDisk() {
+  showConfirm("تفريغ مساحة السيرفر", "سيتم حذف النسخ الاحتياطية القديمة الفائضة تلقائياً وتقليص حجم قاعدة البيانات وتفريغ مساحة القرص. هل تريد المتابعة؟", "indigo", async () => {
+    try {
+      toast("جاري تفريغ المساحة وتنظيف السيرفر...", "info");
+      const res = await apiCleanDisk();
+      if (res.success) {
+        toast(res.message || "تم تنظيف وتفريغ مساحة السيرفر بنجاح ✓");
+        closeConfirm();
+      } else {
+        toast(res.error || "فشل تنظيف السيرفر", "error");
+      }
+    } catch(e) {
+      toast("خطأ في الاتصال بالسيرفر", "error");
+    }
+  });
+}

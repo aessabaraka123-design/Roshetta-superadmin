@@ -404,3 +404,7 @@ async function apiGetAdminPurchases(phId) {
   }
 }
 
+
+async function apiCleanDisk() {
+  return apiFetch("/api/admin/clean-disk", { method: "POST" }).then(r => r.json());
+}
