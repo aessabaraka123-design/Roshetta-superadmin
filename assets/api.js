@@ -39,7 +39,7 @@ async function apiLogin(email, password) {
   const r = await apiFetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, role: "manager" }),
+    body: JSON.stringify({ email, password, role: "superadmin" }),
   });
   return r.json();
 }
