@@ -1,3 +1,14 @@
+// HTML sanitization helper for preventing XSS
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Global State
 let pharms = [],
   users = [],
@@ -291,8 +302,8 @@ async function loadDash() {
       ? recent
           .map(
             (p) => `<tr>
-      <td class="px-6 py-3 font-semibold text-slate-900">${p.name}</td>
-      <td class="px-4 py-3 text-slate-500">${p.owner || "—"}</td>
+      <td class="px-6 py-3 font-semibold text-slate-900">${escapeHtml(p.name)}</td>
+      <td class="px-4 py-3 text-slate-500">${escapeHtml(p.owner || "—")}</td>
       <td class="px-4 py-3">${subBadge(p.subscriptionType)}</td>
       <td class="px-4 py-3">${formatPayMethod(p.payment_method)}</td>
       <td class="px-4 py-3 text-xs text-slate-400">${fd(p.createdAt)}</td>
@@ -394,9 +405,9 @@ function renderPharmsList() {
         }
 
         return `<tr>
-      <td class="px-6 py-3"><div class="font-semibold text-slate-900">${p.name}</div><div class="text-xs text-slate-400">${p.id.slice(0, 8)}…</div></td>
-      <td class="px-4 py-3 text-slate-600">${p.owner || "—"}</td>
-      <td class="px-4 py-3 text-slate-500">${p.phone || "—"}</td>
+      <td class="px-6 py-3"><div class="font-semibold text-slate-900">${escapeHtml(p.name)}</div><div class="text-xs text-slate-400">${escapeHtml(p.id.slice(0, 8))}…</div></td>
+      <td class="px-4 py-3 text-slate-600">${escapeHtml(p.owner || "—")}</td>
+      <td class="px-4 py-3 text-slate-500">${escapeHtml(p.phone || "—")}</td>
       <td class="px-4 py-3">${subBadge(p.subscriptionType)}</td>
       <td class="px-4 py-3">${formatPayMethod(p.payment_method)}</td>
       <td class="px-4 py-3 text-xs text-slate-500">${fd(p.createdAt)}</td>
@@ -404,13 +415,13 @@ function renderPharmsList() {
       <td class="px-4 py-3 font-mono text-sm">${Number(p.totalPaid || 0).toLocaleString("en-US")} ₪</td>
       <td class="px-4 py-3">${statusBadge}</td>
       <td class="px-4 py-3"><div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openPharmacyDetail('${p.id}')" class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
+        <button onclick="openPharmacyDetail('${escapeHtml(p.id)}')" class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
         <span class="text-slate-200">|</span>
-        <button onclick="openManualRenew('${p.id}')" class="text-emerald-600 text-xs font-semibold hover:underline">تجديد يدوي</button>
+        <button onclick="openManualRenew('${escapeHtml(p.id)}')" class="text-emerald-600 text-xs font-semibold hover:underline">تجديد يدوي</button>
         <span class="text-slate-200">|</span>
-        <button onclick="doToggle('${p.id}',${p.isActive})" class="${p.isActive ? "text-amber-600" : "text-emerald-600"} text-xs font-semibold hover:underline">${p.isActive ? "تجميد الحساب" : "تنشيط"}</button>
+        <button onclick="doToggle('${escapeHtml(p.id)}',${Boolean(p.isActive)})" class="${p.isActive ? "text-amber-600" : "text-emerald-600"} text-xs font-semibold hover:underline">${p.isActive ? "تجميد الحساب" : "تنشيط"}</button>
         <span class="text-slate-200">|</span>
-        <button onclick="doDelete('${p.id}','${p.name.replace(/'/g, "\\'")}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
+        <button onclick="doDelete('${escapeHtml(p.id)}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
       </div></td>
     </tr>`;
       })
@@ -468,9 +479,9 @@ function renderUsersList() {
       .map((u) => {
         const ph = pharms.find((p) => p.id === u.pharmacy_id);
         return `<tr>
-        <td class="px-6 py-3 font-medium text-slate-800">${u.managerName || u.name || "—"}</td>
-        <td class="px-4 py-3 text-slate-500">${u.email || "—"}</td>
-        <td class="px-4 py-3 text-slate-500">${ph?.name || "—"}</td>
+        <td class="px-6 py-3 font-medium text-slate-800">${escapeHtml(u.managerName || u.name || "—")}</td>
+        <td class="px-4 py-3 text-slate-500">${escapeHtml(u.email || "—")}</td>
+        <td class="px-4 py-3 text-slate-500">${escapeHtml(ph?.name || "—")}</td>
         <td class="px-4 py-3">${roleBadge(u.role)}</td>
       </tr>`;
       })
@@ -527,9 +538,9 @@ function renderSalesList() {
     tb.innerHTML = paged
       .map(
         (r) => `<tr>
-      <td class="px-6 py-3 font-semibold text-slate-800">${r.name}</td>
-      <td class="px-4 py-3 text-slate-600">${r.cnt.toLocaleString("en-US")} فاتورة</td>
-      <td class="px-4 py-3 font-mono font-bold text-emerald-700">${r.tot.toLocaleString("en-US", { minimumFractionDigits: 2 })} ₪</td>
+      <td class="px-6 py-3 font-semibold text-slate-800">${escapeHtml(r.name || "—")}</td>
+      <td class="px-4 py-3 text-slate-600">${Number(r.cnt || 0).toLocaleString("en-US")} فاتورة</td>
+      <td class="px-4 py-3 font-mono font-bold text-emerald-700">${Number(r.tot || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ₪</td>
       <td class="px-4 py-3 text-xs text-slate-400">${fd(r.last)}</td>
     </tr>`,
       )
@@ -552,12 +563,12 @@ async function loadTickets() {
     tb.innerHTML = ts
       .map(
         (t) => `<tr>
-      <td class="px-6 py-3 font-medium text-slate-800">${t.subject || "—"}</td>
-      <td class="px-4 py-3 text-slate-500">${pharms.find((p) => p.id === t.pharmacy_id)?.name || t.pharmacy_id?.slice(0, 8) || "—"}</td>
+      <td class="px-6 py-3 font-medium text-slate-800">${escapeHtml(t.subject || "—")}</td>
+      <td class="px-4 py-3 text-slate-500">${escapeHtml(pharms.find((p) => p.id === t.pharmacy_id)?.name || t.pharmacy_id?.slice(0, 8) || "—")}</td>
       <td class="px-4 py-3">${prioBadge(t.priority)}</td>
       <td class="px-4 py-3 text-xs text-slate-400">${fd(t.date)}</td>
       <td class="px-4 py-3"><span class="${tStatusClass(t.status)} text-xs font-semibold px-2.5 py-1 rounded-full">${tStatusLabel(t.status)}</span></td>
-      <td class="px-4 py-3"><select onchange="updateTicket('${t.id}',this.value)" class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white outline-none">
+      <td class="px-4 py-3"><select onchange="updateTicket('${escapeHtml(t.id)}',this.value)" class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white outline-none">
         <option value="open" ${t.status === "open" ? "selected" : ""}>مفتوحة</option>
         <option value="in_progress" ${t.status === "in_progress" ? "selected" : ""}>قيد المعالجة</option>
         <option value="closed" ${t.status === "closed" ? "selected" : ""}>مغلقة</option>
@@ -727,6 +738,10 @@ function doToggle(id, cur) {
 }
 
 function doDelete(id, name) {
+  if (!name) {
+    const p = pharms.find((x) => x.id === id);
+    name = p ? p.name : "الصيدلية";
+  }
   showConfirm(
     "حذف الصيدلية",
     `هل أنت متأكد من حذف "${name}"؟ سيتم حذف جميع البيانات نهائياً!`,
@@ -920,7 +935,7 @@ function formatPayMethod(method) {
   if (m === "trial" || m.includes("تجريب")) {
     return '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">⚡ تجريبي</span>';
   }
-  return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">${method}</span>`;
+  return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">${escapeHtml(method)}</span>`;
 }
 
 function formatTransferDetails(name, ref) {
@@ -929,10 +944,10 @@ function formatTransferDetails(name, ref) {
   if (!n && !r) return '<span class="text-slate-400 text-xs">—</span>';
   let html = '<div class="text-xs space-y-0.5">';
   if (n) {
-    html += `<div class="text-slate-800 font-medium truncate max-w-[150px]" title="${n}"><span class="text-slate-400 text-[10px]">بواسطة:</span> ${n}</div>`;
+    html += `<div class="text-slate-800 font-medium truncate max-w-[150px]" title="${escapeHtml(n)}"><span class="text-slate-400 text-[10px]">بواسطة:</span> ${escapeHtml(n)}</div>`;
   }
   if (r) {
-    html += `<div class="font-mono text-slate-600 text-[11px] truncate max-w-[150px]" title="${r}"><span class="text-slate-400 text-[10px]">مرجع:</span> ${r}</div>`;
+    html += `<div class="font-mono text-slate-600 text-[11px] truncate max-w-[150px]" title="${escapeHtml(r)}"><span class="text-slate-400 text-[10px]">مرجع:</span> ${escapeHtml(r)}</div>`;
   }
   html += '</div>';
   return html;
@@ -952,11 +967,11 @@ function renderReqList() {
     tb.innerHTML = paged
       .map(
         (r) => `<tr>
-      <td class="px-6 py-3 font-semibold text-slate-900">${r.pharmacy_name || r.pharmacy_id}<br><span class="text-xs text-slate-400">${r.pharmacy_phone || (r.owner_name ? 'المالك: ' + r.owner_name : "")}</span></td>
+      <td class="px-6 py-3 font-semibold text-slate-900">${escapeHtml(r.pharmacy_name || r.pharmacy_id)}<br><span class="text-xs text-slate-400">${escapeHtml(r.pharmacy_phone || (r.owner_name ? 'المالك: ' + r.owner_name : ""))}</span></td>
       <td class="px-4 py-3">${subBadge(r.plan_type)}</td>
       <td class="px-4 py-3">${formatPayMethod(r.payment_method)}</td>
       <td class="px-4 py-3">${formatTransferDetails(r.transferName, r.transferRef)}</td>
-      <td class="px-4 py-3">${r.receipt_url === "trial_activation" ? '<span class="text-emerald-600 font-semibold text-xs">تفعيل تجريبي</span>' : (r.receipt_url || "").startsWith("ref_") ? `<span class="text-slate-600 font-mono text-xs">رقم حوالة: ${r.receipt_url.replace("ref_", "")}</span>` : `<a href="javascript:void(0)" onclick="viewReceipt('${r.id}')" class="text-blue-500 hover:underline">عرض الإيصال</a>`}</td>
+      <td class="px-4 py-3">${r.receipt_url === "trial_activation" ? '<span class="text-emerald-600 font-semibold text-xs">تفعيل تجريبي</span>' : (r.receipt_url || "").startsWith("ref_") ? `<span class="text-slate-600 font-mono text-xs">رقم حوالة: ${escapeHtml(r.receipt_url.replace("ref_", ""))}</span>` : `<a href="javascript:void(0)" onclick="viewReceipt('${escapeHtml(r.id)}')" class="text-blue-500 hover:underline">عرض الإيصال</a>`}</td>
       <td class="px-4 py-3 text-xs text-slate-500">${fd(r.createdAt)}</td>
       <td class="px-4 py-3"><span class="${r.status === "approved" ? "bg-emerald-100 text-emerald-700" : r.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"} text-xs font-semibold px-2.5 py-1 rounded-full">${r.status === "approved" ? "مفعل" : r.status === "rejected" ? "مرفوض" : "قيد المراجعة"}</span></td>
       <td class="px-4 py-3">
@@ -964,12 +979,12 @@ function renderReqList() {
           ${
             r.status === "pending"
               ? `
-          <button onclick="approveReq('${r.id}')" class="text-emerald-600 text-xs font-semibold hover:underline bg-emerald-50 px-2 py-1 rounded">تفعيل</button>
-          <button onclick="rejectReq('${r.id}')" class="text-amber-600 text-xs font-semibold hover:underline bg-amber-50 px-2 py-1 rounded">رفض</button>
+          <button onclick="approveReq('${escapeHtml(r.id)}')" class="text-emerald-600 text-xs font-semibold hover:underline bg-emerald-50 px-2 py-1 rounded">تفعيل</button>
+          <button onclick="rejectReq('${escapeHtml(r.id)}')" class="text-amber-600 text-xs font-semibold hover:underline bg-amber-50 px-2 py-1 rounded">رفض</button>
           `
               : ""
           }
-          <button onclick="deleteReq('${r.id}')" class="text-red-600 text-xs font-semibold hover:underline bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition" title="حذف الطلب">حذف</button>
+          <button onclick="deleteReq('${escapeHtml(r.id)}')" class="text-red-600 text-xs font-semibold hover:underline bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition" title="حذف الطلب">حذف</button>
         </div>
       </td>
     </tr>`,
@@ -1085,16 +1100,16 @@ async function openPharmacyDetail(id) {
       stb.innerHTML = d.staff
         .map(
           (s) => `<tr>
-      <td class="px-4 py-3 font-medium">${(s.name && s.name !== 'null') ? s.name : '<span class="text-amber-600 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">بدون اسم (اضغط تعديل)</span>'}</td>
-      <td class="px-4 py-3 text-slate-500">${(s.email && s.email !== 'null') ? s.email : '—'}</td>
+      <td class="px-4 py-3 font-medium">${(s.name && s.name !== 'null') ? escapeHtml(s.name) : '<span class="text-amber-600 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">بدون اسم (اضغط تعديل)</span>'}</td>
+      <td class="px-4 py-3 text-slate-500">${(s.email && s.email !== 'null') ? escapeHtml(s.email) : '—'}</td>
       <td class="px-4 py-3">${roleBadge(s.role)} ${(s.status === "active" || s.active == 1) ? '<span class="text-emerald-600 text-xs font-semibold mr-1">نشط</span>' : '<span class="text-red-500 text-xs font-semibold mr-1">متوقف</span>'}</td>
       <td class="px-4 py-3">
         <div class="flex gap-2 items-center">
-          <button onclick="openEditStaff('${s.id}', '${(s.name && s.name !== 'null' ? s.name : '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${(s.email && s.email !== 'null' ? s.email : '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}', '${s.role && s.role !== 'null' ? s.role : 'pharmacist'}', '${s.branch || ''}', '${(s.password || '').replace(/'/g, `\\'`).replace(/\\/g, `\\\\`)}')" class="text-blue-600 text-xs font-bold hover:underline">تعديل</button>
+          <button onclick="openEditStaff('${escapeHtml(s.id)}')" class="text-blue-600 text-xs font-bold hover:underline">تعديل</button>
           <span class="text-slate-200">|</span>
-          <button onclick="toggleStaffStatus('${s.id}')" class="${(s.status === "active" || s.active == 1) ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${(s.status === "active" || s.active == 1) ? "إيقاف" : "تفعيل"}</button>
+          <button onclick="toggleStaffStatus('${escapeHtml(s.id)}')" class="${(s.status === "active" || s.active == 1) ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${(s.status === "active" || s.active == 1) ? "إيقاف" : "تفعيل"}</button>
           <span class="text-slate-200">|</span>
-          <button onclick="deleteStaff('${s.id}')" class="text-red-500 text-xs font-bold hover:underline">حذف</button>
+          <button onclick="deleteStaff('${escapeHtml(s.id)}')" class="text-red-500 text-xs font-bold hover:underline">حذف</button>
         </div>
       </td>
     </tr>`,
@@ -1111,13 +1126,13 @@ async function openPharmacyDetail(id) {
       btb.innerHTML = d.branches
         .map(
           (br) => `<tr>
-      <td class="px-4 py-3 font-medium">${br.name}</td>
-      <td class="px-4 py-3 text-slate-500">${br.addr || "—"}</td>
-      <td class="px-4 py-3 text-xs font-semibold ${br.status === "نشط" || br.status === "active" ? "text-emerald-600" : "text-slate-500"}">${br.status || "—"}</td>
+      <td class="px-4 py-3 font-medium">${escapeHtml(br.name)}</td>
+      <td class="px-4 py-3 text-slate-500">${escapeHtml(br.addr || "—")}</td>
+      <td class="px-4 py-3 text-xs font-semibold ${br.status === "نشط" || br.status === "active" ? "text-emerald-600" : "text-slate-500"}">${escapeHtml(br.status || "—")}</td>
         <td class="px-4 py-3 flex items-center gap-3">
-          <button onclick="openEditBranch('${br.id}', '${(br.name || "").replace(/'/g, "\\'")}', '${(br.addr || "").replace(/'/g, "\\'")}')" class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
+          <button onclick="openEditBranch('${escapeHtml(br.id)}')" class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
           <span class="text-slate-300">|</span>
-          <button onclick="deleteBranch('${br.id}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
+          <button onclick="deleteBranch('${escapeHtml(br.id)}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
         </td>
       </tr>`,
         )
@@ -1363,7 +1378,7 @@ function viewAdminSale(saleId) {
       const price = item.unitPrice || item.price || item.unit_price || 0;
       return `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-        <td class="px-4 py-2 font-semibold text-slate-700">${name}</td>
+        <td class="px-4 py-2 font-semibold text-slate-700">${escapeHtml(name)}</td>
         <td class="px-4 py-2">${qty}</td>
         <td class="px-4 py-2" dir="ltr">${new Intl.NumberFormat("en-US").format(price)} ₪</td>
         <td class="px-4 py-2 font-bold text-slate-800" dir="ltr">${new Intl.NumberFormat("en-US").format(qty * price)} ₪</td>
@@ -1445,6 +1460,14 @@ function openAddStaff() {
 }
 function openEditStaff(id, name, email, role, branchId, password) {
   currentEditStaffId = id;
+  if (id && (!name || !email) && window.__staffMap && window.__staffMap[id]) {
+    const s = window.__staffMap[id];
+    name = s.name;
+    email = s.email;
+    role = s.role;
+    branchId = s.branch;
+    password = s.password;
+  }
   const h3 = document.getElementById("staffModalHeading") || document.querySelector("#staffModal h3");
   if (h3) h3.textContent = "تعديل بيانات الموظف";
   const sub = document.getElementById("staffModalSub");
@@ -1564,6 +1587,13 @@ function openAddBranch() {
 }
 function openEditBranch(id, name, addr) {
   currentEditBranchId = id;
+  if (!name && currentDetBranches && currentDetBranches.length) {
+    const b = currentDetBranches.find(x => x.id === id);
+    if (b) {
+      name = b.name;
+      addr = b.addr;
+    }
+  }
   const h3 = document.getElementById("branchModalHeading") || document.querySelector("#branchModal h3");
   if (h3) h3.textContent = "تعديل بيانات الفرع";
   const sub = document.getElementById("branchModalSub");
@@ -1632,7 +1662,7 @@ async function loadNotifications() {
         list.innerHTML = res.notifications
           .map(
             (n) => `
-          <div onclick="tab('${n.tab}'); toggleNotifications();" class="p-3 hover:bg-slate-50 cursor-pointer rounded-xl transition flex items-start gap-3 mb-1">
+          <div onclick="tab('${escapeHtml(n.tab)}'); toggleNotifications();" class="p-3 hover:bg-slate-50 cursor-pointer rounded-xl transition flex items-start gap-3 mb-1">
             <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
               n.type === "amber"
                 ? "bg-amber-100 text-amber-600"
@@ -1643,7 +1673,7 @@ async function loadNotifications() {
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <div class="flex-1">
-              <p class="text-sm font-semibold text-slate-800">${n.text}</p>
+              <p class="text-sm font-semibold text-slate-800">${escapeHtml(n.text)}</p>
               <p class="text-xs text-slate-400 mt-0.5">انقر للمراجعة</p>
             </div>
           </div>
@@ -1735,14 +1765,21 @@ function exportPharmaciesCSV() {
     p.isActive ? "نعم" : "لا",
   ]);
 
+  // Sanitize cells against CSV Formula Injection (Excel / LibreOffice DDE execution)
+  const sanitizeCsvCell = (cell) => {
+    let val = (cell === null || cell === undefined ? "" : cell) + "";
+    if (/^[=+\-@\t\r]/.test(val)) {
+      val = "'" + val;
+    }
+    return `"${val.replace(/"/g, '""')}"`;
+  };
+
   let csvContent =
     "data:text/csv;charset=utf-8,\uFEFF" +
     headers.join(";") +
     "\n" +
     rows
-      .map((e) =>
-        e.map((cell) => `"${(cell + "").replace(/"/g, '""')}"`).join(";"),
-      )
+      .map((e) => e.map(sanitizeCsvCell).join(";"))
       .join("\n");
 
   const encodedUri = encodeURI(csvContent);
@@ -1896,12 +1933,14 @@ async function submitVipPrice() {
 // Platform Staff Management
 // ==========================================
 
+let currentPlatformStaff = [];
 async function loadPlatformStaff() {
   try {
     const res = await apiFetch("/api/admin/platform-staff");
     const data = await res.json();
     if (data.success) {
-      renderPlatformStaff(data.staff);
+      currentPlatformStaff = data.staff || [];
+      renderPlatformStaff(currentPlatformStaff);
     }
   } catch (e) {
     console.error(e);
@@ -1913,7 +1952,7 @@ function renderPlatformStaff(staffList) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  staffList.forEach((s) => {
+  (staffList || []).forEach((s) => {
     let roleBadge = "";
     if (s.role === "owner") {
       roleBadge =
@@ -1933,18 +1972,18 @@ function renderPlatformStaff(staffList) {
 
     tbody.innerHTML += `
       <tr>
-        <td class="px-6 py-4">${s.name}</td>
-        <td class="px-6 py-4" dir="ltr">${s.email}</td>
+        <td class="px-6 py-4">${escapeHtml(s.name)}</td>
+        <td class="px-6 py-4" dir="ltr">${escapeHtml(s.email)}</td>
         <td class="px-6 py-4">${roleBadge}</td>
-        <td class="px-6 py-4">${date}</td>
+        <td class="px-6 py-4">${escapeHtml(date)}</td>
         <td class="px-6 py-4 text-left">
                       ${
                         s.id === "superadmin-owner"
                           ? '<span class="text-slate-400 text-xs">أساسي</span>'
                           : getSession().id === "superadmin-owner"
                             ? `
-              <button onclick="editPlatformStaff('${s.id}', '${s.name}', '${s.email}', '${s.role}')" class="text-blue-600 hover:text-blue-800 ml-3">تعديل</button>
-              <button onclick="deletePlatformStaff('${s.id}')" class="text-red-600 hover:text-red-800">حذف</button>
+              <button onclick="editPlatformStaff('${escapeHtml(s.id)}')" class="text-blue-600 hover:text-blue-800 ml-3">تعديل</button>
+              <button onclick="deletePlatformStaff('${escapeHtml(s.id)}')" class="text-red-600 hover:text-red-800">حذف</button>
             `
                             : ""
                       }
@@ -1971,11 +2010,19 @@ function closePlatformStaffModal() {
 }
 
 function editPlatformStaff(id, name, email, role) {
-  document.getElementById("psId").value = id;
-  document.getElementById("psName").value = name;
-  document.getElementById("psEmail").value = email;
+  if (!name && currentPlatformStaff.length) {
+    const s = currentPlatformStaff.find((x) => x.id === id);
+    if (s) {
+      name = s.name;
+      email = s.email;
+      role = s.role;
+    }
+  }
+  document.getElementById("psId").value = id || "";
+  document.getElementById("psName").value = name || "";
+  document.getElementById("psEmail").value = email || "";
   document.getElementById("psPassword").value = ""; // Don't fill password
-  document.getElementById("psRole").value = role;
+  document.getElementById("psRole").value = role || "staff";
   document.getElementById("platformStaffTitle").textContent =
     "تعديل بيانات الموظف";
   toggleModal('platformStaffModal', true);
@@ -2062,14 +2109,14 @@ function renderPlans() {
     const oldPriceHtml = p.oldPrice ? `<span class="line-through text-slate-400 text-sm ml-2">${p.oldPrice} ₪</span>` : '';
     let parsedFeatures = [];
     try { parsedFeatures = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []); } catch(e){}
-    const featuresList = parsedFeatures.map(f => `<li class="flex items-start gap-2 text-sm text-slate-600 mb-2"><svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>${f}</li>`).join('');
+    const featuresList = parsedFeatures.map(f => `<li class="flex items-start gap-2 text-sm text-slate-600 mb-2"><svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>${escapeHtml(f)}</li>`).join('');
     return `
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 relative flex flex-col h-full">
       ${isAct ? '' : '<div class="absolute top-4 left-4 bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-md font-bold">غير نشطة</div>'}
-      <h3 class="text-xl font-bold text-slate-900 mb-1">${p.name}</h3>
-      <div class="text-slate-500 text-sm mb-4">مدة الباقة: ${p.durationMonths} أشهر</div>
+      <h3 class="text-xl font-bold text-slate-900 mb-1">${escapeHtml(p.name)}</h3>
+      <div class="text-slate-500 text-sm mb-4">مدة الباقة: ${escapeHtml(p.durationMonths)} أشهر</div>
       <div class="mb-6">
-        <span class="text-3xl font-black text-slate-900">${p.price}</span>
+        <span class="text-3xl font-black text-slate-900">${escapeHtml(p.price)}</span>
         <span class="text-slate-500 font-medium">₪</span>
         ${oldPriceHtml}
       </div>
@@ -2077,8 +2124,8 @@ function renderPlans() {
         ${featuresList}
       </ul>
       <div class="flex gap-2 mt-auto">
-        <button onclick="editPlan('${p.id}')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl py-2.5 text-sm transition">تعديل</button>
-        <button onclick="deletePlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl py-2.5 text-sm transition">حذف</button>
+        <button onclick="editPlan('${escapeHtml(p.id)}')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl py-2.5 text-sm transition">تعديل</button>
+        <button onclick="deletePlan('${escapeHtml(p.id)}')" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl py-2.5 text-sm transition">حذف</button>
       </div>
     </div>
     `;
@@ -2155,6 +2202,10 @@ async function savePlan() {
 }
 
 function deletePlan(id, name) {
+  if (!name) {
+    const p = plans.find((x) => x.id === id);
+    name = p ? p.name : "الباقة";
+  }
   showConfirm(
     "حذف الباقة",
     `هل أنت متأكد من حذف باقة "${name}"؟`,
@@ -2252,9 +2303,9 @@ function renderAdminCustomers() {
   if (list.length > 0) {
     tbody.innerHTML = list.map(c => `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-        <td class="px-4 py-3 font-semibold text-slate-700">${c.name}</td>
-        <td class="px-4 py-3 text-slate-500">${c.branch_name}</td>
-        <td class="px-4 py-3 text-slate-600" dir="ltr">${c.phone || "-"}</td>
+        <td class="px-4 py-3 font-semibold text-slate-700">${escapeHtml(c.name)}</td>
+        <td class="px-4 py-3 text-slate-500">${escapeHtml(c.branch_name)}</td>
+        <td class="px-4 py-3 text-slate-600" dir="ltr">${escapeHtml(c.phone || "-")}</td>
         <td class="px-4 py-3 font-bold ${c.debt > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(c.debt || 0)} ₪</td>
         <td class="px-4 py-3 text-slate-500">${c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("ar-EG") : "-"}</td>
       </tr>
@@ -2274,9 +2325,9 @@ async function loadAdminDebtPayments() {
     if (res.success && res.payments && res.payments.length > 0) {
       tbody.innerHTML = res.payments.map(p => `
         <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-          <td class="px-4 py-3 font-semibold text-slate-800">${p.customer_name || "عميل محذوف"}</td>
+          <td class="px-4 py-3 font-semibold text-slate-800">${escapeHtml(p.customer_name || "عميل محذوف")}</td>
           <td class="px-4 py-3">${formatPayMethod(p.method || p.payment_method)}</td>
-          <td class="px-4 py-3 text-slate-600 text-xs">${p.branch || p.branch_name || "الفرع الرئيسي"}</td>
+          <td class="px-4 py-3 text-slate-600 text-xs">${escapeHtml(p.branch || p.branch_name || "الفرع الرئيسي")}</td>
           <td class="px-4 py-3 font-bold text-emerald-600" dir="ltr">${new Intl.NumberFormat("en-US").format(p.amount || 0)} ₪</td>
           <td class="px-4 py-3 text-slate-500 text-xs" dir="ltr">${p.date ? new Date(p.date).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</td>
         </tr>
@@ -2385,11 +2436,11 @@ function renderAdminSuppliers() {
     tbody.innerHTML = list.map(s => `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
         <td class="px-4 py-3">
-          <div class="font-semibold text-slate-700">${s.company || s.name}</div>
-          ${s.company ? `<div class="text-xs text-slate-500">${s.name}</div>` : ''}
+          <div class="font-semibold text-slate-700">${escapeHtml(s.company || s.name)}</div>
+          ${s.company ? `<div class="text-xs text-slate-500">${escapeHtml(s.name)}</div>` : ''}
         </td>
         
-        <td class="px-4 py-3 text-slate-600" dir="ltr">${s.phone || "-"}</td>
+        <td class="px-4 py-3 text-slate-600" dir="ltr">${escapeHtml(s.phone || "-")}</td>
         <td class="px-4 py-3 font-bold ${s.balance > 0 ? "text-red-600" : "text-green-600"}" dir="ltr">${new Intl.NumberFormat("en-US").format(s.balance || 0)} ₪</td>
       </tr>
     `).join("");
@@ -2418,16 +2469,16 @@ function renderAdminPurchases() {
       
       return `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-        <td class="px-4 py-3 font-mono text-sm font-semibold text-slate-700">#${invNum}</td>
-        <td class="px-4 py-3 text-slate-700 font-semibold">${p.supplier_name || "-"}</td>
+        <td class="px-4 py-3 font-mono text-sm font-semibold text-slate-700">#${escapeHtml(invNum)}</td>
+        <td class="px-4 py-3 text-slate-700 font-semibold">${escapeHtml(p.supplier_name || "-")}</td>
         <td class="px-4 py-3 text-slate-500" dir="ltr">${p.date ? new Date(p.date).toLocaleDateString("ar-EG") : "-"}</td>
         <td class="px-4 py-3 font-bold text-slate-800" dir="ltr">${new Intl.NumberFormat("en-US").format(p.total_cost || 0)} ₪</td>
         <td class="px-4 py-3 text-emerald-600 font-semibold" dir="ltr">${new Intl.NumberFormat("en-US").format(p.paid_amount || 0)} ₪</td>
         <td class="px-4 py-3 ${p.remaining > 0 ? "text-red-600 font-bold" : "text-slate-500"}" dir="ltr">${new Intl.NumberFormat("en-US").format(p.remaining || 0)} ₪</td>
         <td class="px-4 py-3">${statusBadge}</td>
-        <td class="px-4 py-3 text-slate-500">${p.branch_name || "الفرع الرئيسي"}</td>
+        <td class="px-4 py-3 text-slate-500">${escapeHtml(p.branch_name || "الفرع الرئيسي")}</td>
         <td class="px-4 py-3 text-center">
-          <button onclick="viewAdminPurchase('${p.id}')" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm" title="عرض تفاصيل الفاتورة">
+          <button onclick="viewAdminPurchase('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm" title="عرض تفاصيل الفاتورة">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             عرض
           </button>
@@ -2514,7 +2565,7 @@ async function viewAdminPurchase(purchaseId) {
       return `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 text-xs">
         <td class="px-4 py-2.5 text-slate-400 font-mono text-center">${idx + 1}</td>
-        <td class="px-4 py-2.5 font-bold text-slate-800">${name}</td>
+        <td class="px-4 py-2.5 font-bold text-slate-800">${escapeHtml(name)}</td>
         <td class="px-4 py-2.5 font-semibold text-slate-700">${qty}</td>
         <td class="px-4 py-2.5 font-mono text-slate-600" dir="ltr">${fMoney(cost)}</td>
         <td class="px-4 py-2.5 font-bold text-slate-900" dir="ltr">${fMoney(total)}</td>
