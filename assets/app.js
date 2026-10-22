@@ -9,6 +9,41 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// Keep server-provided values in data attributes, never in executable handlers.
+function actionAttributes(action, id) {
+  return `data-action="${escapeHtml(action)}" data-id="${escapeHtml(id)}"`;
+}
+
+document.addEventListener("click", (event) => {
+  const control = event.target.closest("[data-action]");
+  if (!control || control.disabled) return;
+  const id = control.dataset.id;
+  const actions = {
+    openPharmacyDetail, openManualRenew, doDelete,
+    approveReq, rejectReq, deleteReq, openEditStaff, toggleStaffStatus,
+    deleteStaff, openEditBranch, deleteBranch, viewAdminSale,
+    deleteAdminSale, editPlatformStaff, deletePlatformStaff,
+    editPlan, deletePlan, viewAdminPurchase,
+    viewReceipt: () => viewReceipt(id, true),
+    doToggle: () => doToggle(id, control.dataset.active === "true"),
+    changePage: () => changePage(id, Number(control.dataset.direction)),
+    adminSalesPage: () => loadAdminSales(Number(control.dataset.page)),
+    notification: () => {
+      if (Object.prototype.hasOwnProperty.call(titles, id)) tab(id);
+      toggleNotifications();
+    },
+  };
+  if (!Object.prototype.hasOwnProperty.call(actions, control.dataset.action)) return;
+  event.preventDefault();
+  actions[control.dataset.action](id);
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.matches('[data-action="updateTicket"]')) {
+    updateTicket(event.target.dataset.id, event.target.value);
+  }
+});
+
 // Global State
 let pharms = [],
   users = [],
@@ -49,6 +84,13 @@ function togglePassVisibility(inputId, btn) {
 }
 // Initialize App
 document.addEventListener("DOMContentLoaded", () => {
+  const logoutMessage = sessionStorage.getItem("sa_logout_message");
+  if (logoutMessage) {
+    sessionStorage.removeItem("sa_logout_message");
+    const error = document.getElementById("loginErr");
+    error.textContent = logoutMessage;
+    error.classList.remove("hidden");
+  }
   const session = getSession();
   if (session && session.role === "superadmin") {
     document.getElementById("loginScreen").classList.add("hidden");
@@ -116,10 +158,8 @@ function applyRBAC(role) {
   });
 
   const session = getSession();
-  if (session && session.id !== "superadmin-owner") {
-    const addBtn = document.getElementById("addPlatformStaffBtn");
-    if (addBtn) addBtn.style.display = "none";
-  }
+  const addBtn = document.getElementById("addPlatformStaffBtn");
+  if (addBtn) addBtn.style.display = session?.platformRole === "owner" ? "" : "none";
 }
 
 // Auth
@@ -135,8 +175,8 @@ async function login() {
 
   try {
     const d = await apiLogin(e, p);
-    if (d.success && d.user?.role === "superadmin") {
-      saveSession(d.user);
+    if (d.success && d.user?.role === "superadmin" && d.token) {
+      saveSession({ ...d.user, token: d.token });
       document.getElementById("loginScreen").classList.add("hidden");
       toggleModal('app', true);
 
@@ -159,11 +199,18 @@ async function login() {
   btn.disabled = false;
 }
 
-function logout() {
-  tab("dashboard");
-  clearSession();
-  toggleModal('app', false);
-  document.getElementById("loginScreen").classList.remove("hidden");
+async function logout() {
+  // Stop authenticated refreshes before discarding the local session.
+  clearInterval(notifInterval);
+  notifInterval = null;
+  try {
+    await apiLogout();
+  } catch (e) {
+    sessionStorage.setItem("sa_logout_message", "تم تسجيل الخروج من هذا الجهاز فقط. تعذر تأكيد إبطال الجلسة على الخادم؛ حاول مجدداً عند عودة الاتصال.");
+  } finally {
+    clearSession();
+    window.location.reload();
+  }
 }
 
 // Navigation
@@ -335,13 +382,16 @@ function renderPaginationControls(elementId, type, dataArray) {
   container.innerHTML = `
     <span class="text-sm text-slate-500">صفحة ${state.page} من ${totalPages} (إجمالي ${state.total})</span>
     <div class="flex gap-2">
-      <button class="page-btn" ${state.page === 1 ? "disabled" : ""} onclick="changePage('${type}', -1)">السابق</button>
-      <button class="page-btn" ${state.page === totalPages ? "disabled" : ""} onclick="changePage('${type}', 1)">التالي</button>
+      <button class="page-btn" ${state.page === 1 ? "disabled" : ""} ${actionAttributes("changePage", type)} data-direction="-1">السابق</button>
+      <button class="page-btn" ${state.page === totalPages ? "disabled" : ""} ${actionAttributes("changePage", type)} data-direction="1">التالي</button>
     </div>
   `;
 }
 
 function changePage(type, direction) {
+  if (!Object.prototype.hasOwnProperty.call(PAGINATION, type) || ![-1, 1].includes(direction)) return;
+  const state = PAGINATION[type];
+  if (state.page + direction < 1 || state.page + direction > Math.max(1, Math.ceil(state.total / state.limit))) return;
   PAGINATION[type].page += direction;
   if (type === "pharmacies") renderPharmsList();
   if (type === "users") renderUsersList();
@@ -415,13 +465,13 @@ function renderPharmsList() {
       <td class="px-4 py-3 font-mono text-sm">${Number(p.totalPaid || 0).toLocaleString("en-US")} ₪</td>
       <td class="px-4 py-3">${statusBadge}</td>
       <td class="px-4 py-3"><div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openPharmacyDetail('${escapeHtml(p.id)}')" class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
+        <button ${actionAttributes("openPharmacyDetail", p.id)} class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
         <span class="text-slate-200">|</span>
-        <button onclick="openManualRenew('${escapeHtml(p.id)}')" class="text-emerald-600 text-xs font-semibold hover:underline">تجديد يدوي</button>
+        <button ${actionAttributes("openManualRenew", p.id)} class="text-emerald-600 text-xs font-semibold hover:underline">تجديد يدوي</button>
         <span class="text-slate-200">|</span>
-        <button onclick="doToggle('${escapeHtml(p.id)}',${Boolean(p.isActive)})" class="${p.isActive ? "text-amber-600" : "text-emerald-600"} text-xs font-semibold hover:underline">${p.isActive ? "تجميد الحساب" : "تنشيط"}</button>
+        <button ${actionAttributes("doToggle", p.id)} data-active="${Boolean(p.isActive)}" class="${p.isActive ? "text-amber-600" : "text-emerald-600"} text-xs font-semibold hover:underline">${p.isActive ? "تجميد الحساب" : "تنشيط"}</button>
         <span class="text-slate-200">|</span>
-        <button onclick="doDelete('${escapeHtml(p.id)}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
+        <button ${actionAttributes("doDelete", p.id)} class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
       </div></td>
     </tr>`;
       })
@@ -568,7 +618,7 @@ async function loadTickets() {
       <td class="px-4 py-3">${prioBadge(t.priority)}</td>
       <td class="px-4 py-3 text-xs text-slate-400">${fd(t.date)}</td>
       <td class="px-4 py-3"><span class="${tStatusClass(t.status)} text-xs font-semibold px-2.5 py-1 rounded-full">${tStatusLabel(t.status)}</span></td>
-      <td class="px-4 py-3"><select onchange="updateTicket('${escapeHtml(t.id)}',this.value)" class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white outline-none">
+      <td class="px-4 py-3"><select ${actionAttributes("updateTicket", t.id)} class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white outline-none">
         <option value="open" ${t.status === "open" ? "selected" : ""}>مفتوحة</option>
         <option value="in_progress" ${t.status === "in_progress" ? "selected" : ""}>قيد المعالجة</option>
         <option value="closed" ${t.status === "closed" ? "selected" : ""}>مغلقة</option>
@@ -599,6 +649,7 @@ async function loadSettings() {
     if (!s) return;
     document.getElementById("sName").value = s.systemName || "";
     document.getElementById("sEmail").value = s.adminEmail || "";
+    document.getElementById("sPass").value = "";
     document.getElementById("sMaint").checked = !!s.isMaintenance;
 
     const m = document.getElementById("maintBadge");
@@ -634,7 +685,6 @@ async function saveSettings() {
   const body = {
     systemName: document.getElementById("sName").value,
     adminEmail: document.getElementById("sEmail").value,
-    adminPassword: document.getElementById("sPass").value || "",
     isMaintenance: document.getElementById("sMaint").checked,
 
     companyName: document.getElementById("sCompany").value,
@@ -650,9 +700,12 @@ async function saveSettings() {
     devInstagram: document.getElementById("sDevInstagram").value,
     devWebsite: document.getElementById("sDevWebsite").value,
   };
+  const newAdminPassword = document.getElementById("sPass").value;
+  if (newAdminPassword) body.adminPassword = newAdminPassword;
   try {
     const d = await apiSaveSettings(body);
     if (d.success) {
+      document.getElementById("sPass").value = "";
       toast("تم حفظ الإعدادات ✓");
       const m = document.getElementById("maintBadge");
       const ms = document.getElementById("maintBadgeSidebar");
@@ -800,7 +853,7 @@ function subBadge(t) {
   else if (t === "lifetime") text = "مدى الحياة";
   else if (t && t !== "monthly") text = t;
 
-  return `<span class="${m[t] || m.monthly} text-xs font-semibold px-2.5 py-1 rounded-full">${text}</span>`;
+  return `<span class="${m[t] || m.monthly} text-xs font-semibold px-2.5 py-1 rounded-full">${escapeHtml(text)}</span>`;
 }
 function roleBadge(r) {
   if (!r || r === "null" || r === "undefined") {
@@ -813,7 +866,8 @@ function roleBadge(r) {
     branch_manager: "bg-purple-100 text-purple-700",
     branchManager: "bg-purple-100 text-purple-700",
   };
-  return `<span class="${m[r] || "bg-slate-100 text-slate-600"} text-xs font-semibold px-2.5 py-1 rounded-full">${r === "manager" ? "مدير" : r === "pharmacist" ? "صيدلاني" : r === "cashier" ? "كاشير" : r === "branch_manager" || r === "branchManager" ? "مدير فرع" : r}</span>`;
+  const label = r === "manager" ? "مدير" : r === "pharmacist" ? "صيدلاني" : r === "cashier" ? "كاشير" : r === "branch_manager" || r === "branchManager" ? "مدير فرع" : r;
+  return `<span class="${m[r] || "bg-slate-100 text-slate-600"} text-xs font-semibold px-2.5 py-1 rounded-full">${escapeHtml(label)}</span>`;
 }
 function prioBadge(p) {
   const m = {
@@ -846,7 +900,7 @@ function fd(d) {
       day: "numeric",
     });
   } catch {
-    return d;
+    return escapeHtml(d);
   }
 }
 
@@ -864,15 +918,29 @@ function toast(msg, type = "success") {
   toastT = setTimeout(() => el.classList.add("hidden"), 3500);
 }
 
-window.viewReceipt = async function(idOrUrl) {
+function receiptUrl(value) {
+  const raw = String(value || "");
+  if (/^data:(image\/(?:png|jpeg|jpg|gif|webp)|application\/pdf);base64,/i.test(raw)) return raw;
+  const base = new URL(API);
+  if (/^[a-z][a-z\d+.-]*:/i.test(raw)) {
+    const absolute = new URL(raw);
+    if (absolute.origin !== base.origin || !absolute.pathname.startsWith("/uploads/")) throw new Error("Invalid receipt URL");
+    return absolute.href;
+  }
+  const relative = raw.replace(/^\/+/, "").replace(/^uploads\//, "");
+  if (!relative || relative.split("/").some((part) => part === "." || part === "..")) throw new Error("Invalid receipt path");
+  return `${base.origin}/uploads/${relative.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+window.viewReceipt = async function(idOrUrl, isRequestId = false) {
   if (!idOrUrl) return;
   let url = idOrUrl;
   
-  if (!url.startsWith('data:') && !url.includes('.')) {
+  if (isRequestId || (!url.startsWith('data:') && !url.includes('.'))) {
     // It's an ID. Let's fetch it from server
     try {
       toast("جاري تحميل الإيصال...");
-      const res = await apiFetch(`/api/admin/subscription-requests/${idOrUrl}/receipt`);
+      const res = await apiFetch(`/api/admin/subscription-requests/${encodeURIComponent(idOrUrl)}/receipt`);
       const data = await res.json();
       if (data.success && data.receipt) {
         url = data.receipt;
@@ -886,17 +954,26 @@ window.viewReceipt = async function(idOrUrl) {
     }
   }
 
-  if (url.startsWith('data:')) {
-    const w = window.open("", "_blank");
-    fetch(url)
-      .then(res => res.blob())
-      .then(blob => {
+  try {
+    url = receiptUrl(url);
+    if (url.startsWith('data:')) {
+      const w = window.open("", "_blank");
+      if (!w) return toast("اسمح بفتح نافذة الإيصال ثم حاول مجدداً", "warning");
+      w.opener = null;
+      try {
+        const blob = await fetch(url).then(res => res.blob());
         const blobUrl = URL.createObjectURL(blob);
         w.location.href = blobUrl;
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-      });
-  } else {
-    window.open(`${API}/uploads/${url}`, "_blank");
+      } catch (e) {
+        w.close();
+        toast("حدث خطأ أثناء فتح الإيصال", "error");
+      }
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  } catch (e) {
+    toast("رابط الإيصال غير صالح", "error");
   }
 }
 
@@ -971,7 +1048,7 @@ function renderReqList() {
       <td class="px-4 py-3">${subBadge(r.plan_type)}</td>
       <td class="px-4 py-3">${formatPayMethod(r.payment_method)}</td>
       <td class="px-4 py-3">${formatTransferDetails(r.transferName, r.transferRef)}</td>
-      <td class="px-4 py-3">${r.receipt_url === "trial_activation" ? '<span class="text-emerald-600 font-semibold text-xs">تفعيل تجريبي</span>' : (r.receipt_url || "").startsWith("ref_") ? `<span class="text-slate-600 font-mono text-xs">رقم حوالة: ${escapeHtml(r.receipt_url.replace("ref_", ""))}</span>` : `<a href="javascript:void(0)" onclick="viewReceipt('${escapeHtml(r.id)}')" class="text-blue-500 hover:underline">عرض الإيصال</a>`}</td>
+      <td class="px-4 py-3">${r.receipt_url === "trial_activation" ? '<span class="text-emerald-600 font-semibold text-xs">تفعيل تجريبي</span>' : (r.receipt_url || "").startsWith("ref_") ? `<span class="text-slate-600 font-mono text-xs">رقم حوالة: ${escapeHtml(r.receipt_url.replace("ref_", ""))}</span>` : `<a href="#" ${actionAttributes("viewReceipt", r.id)} class="text-blue-500 hover:underline">عرض الإيصال</a>`}</td>
       <td class="px-4 py-3 text-xs text-slate-500">${fd(r.createdAt)}</td>
       <td class="px-4 py-3"><span class="${r.status === "approved" ? "bg-emerald-100 text-emerald-700" : r.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"} text-xs font-semibold px-2.5 py-1 rounded-full">${r.status === "approved" ? "مفعل" : r.status === "rejected" ? "مرفوض" : "قيد المراجعة"}</span></td>
       <td class="px-4 py-3">
@@ -979,12 +1056,12 @@ function renderReqList() {
           ${
             r.status === "pending"
               ? `
-          <button onclick="approveReq('${escapeHtml(r.id)}')" class="text-emerald-600 text-xs font-semibold hover:underline bg-emerald-50 px-2 py-1 rounded">تفعيل</button>
-          <button onclick="rejectReq('${escapeHtml(r.id)}')" class="text-amber-600 text-xs font-semibold hover:underline bg-amber-50 px-2 py-1 rounded">رفض</button>
+          <button ${actionAttributes("approveReq", r.id)} class="text-emerald-600 text-xs font-semibold hover:underline bg-emerald-50 px-2 py-1 rounded">تفعيل</button>
+          <button ${actionAttributes("rejectReq", r.id)} class="text-amber-600 text-xs font-semibold hover:underline bg-amber-50 px-2 py-1 rounded">رفض</button>
           `
               : ""
           }
-          <button onclick="deleteReq('${escapeHtml(r.id)}')" class="text-red-600 text-xs font-semibold hover:underline bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition" title="حذف الطلب">حذف</button>
+          <button ${actionAttributes("deleteReq", r.id)} class="text-red-600 text-xs font-semibold hover:underline bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition" title="حذف الطلب">حذف</button>
         </div>
       </td>
     </tr>`,
@@ -1060,6 +1137,10 @@ async function openPharmacyDetail(id) {
     currentDetPh = d.pharmacy;
     currentDetBranches = d.branches || [];
     currentDetStaff = d.staff || [];
+    currentAdminSales = [];
+    adminSalesPage = 1;
+    const invoicePagination = document.getElementById("detInvoicesPagination");
+    if (invoicePagination) invoicePagination.innerHTML = "";
 
     // Header
     document.getElementById("detName").textContent = currentDetPh.name;
@@ -1085,7 +1166,7 @@ async function openPharmacyDetail(id) {
     const dbPayMethodEl = document.getElementById("dbPayMethod");
     if (dbPayMethodEl) dbPayMethodEl.value = pmDetails || "—";
     document.getElementById("dbEmail").value = currentDetPh.email || "";
-    document.getElementById("dbPassword").value = currentDetPh.password || "";
+    document.getElementById("dbPassword").value = "";
 
     // Staff
     const stb = document.getElementById("detStaffTbl");
@@ -1105,11 +1186,11 @@ async function openPharmacyDetail(id) {
       <td class="px-4 py-3">${roleBadge(s.role)} ${(s.status === "active" || s.active == 1) ? '<span class="text-emerald-600 text-xs font-semibold mr-1">نشط</span>' : '<span class="text-red-500 text-xs font-semibold mr-1">متوقف</span>'}</td>
       <td class="px-4 py-3">
         <div class="flex gap-2 items-center">
-          <button onclick="openEditStaff('${escapeHtml(s.id)}')" class="text-blue-600 text-xs font-bold hover:underline">تعديل</button>
+          <button ${actionAttributes("openEditStaff", s.id)} class="text-blue-600 text-xs font-bold hover:underline">تعديل</button>
           <span class="text-slate-200">|</span>
-          <button onclick="toggleStaffStatus('${escapeHtml(s.id)}')" class="${(s.status === "active" || s.active == 1) ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${(s.status === "active" || s.active == 1) ? "إيقاف" : "تفعيل"}</button>
+          <button ${actionAttributes("toggleStaffStatus", s.id)} class="${(s.status === "active" || s.active == 1) ? "text-amber-600" : "text-emerald-600"} text-xs font-bold hover:underline">${(s.status === "active" || s.active == 1) ? "إيقاف" : "تفعيل"}</button>
           <span class="text-slate-200">|</span>
-          <button onclick="deleteStaff('${escapeHtml(s.id)}')" class="text-red-500 text-xs font-bold hover:underline">حذف</button>
+          <button ${actionAttributes("deleteStaff", s.id)} class="text-red-500 text-xs font-bold hover:underline">حذف</button>
         </div>
       </td>
     </tr>`,
@@ -1130,9 +1211,9 @@ async function openPharmacyDetail(id) {
       <td class="px-4 py-3 text-slate-500">${escapeHtml(br.addr || "—")}</td>
       <td class="px-4 py-3 text-xs font-semibold ${br.status === "نشط" || br.status === "active" ? "text-emerald-600" : "text-slate-500"}">${escapeHtml(br.status || "—")}</td>
         <td class="px-4 py-3 flex items-center gap-3">
-          <button onclick="openEditBranch('${escapeHtml(br.id)}')" class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
+          <button ${actionAttributes("openEditBranch", br.id)} class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
           <span class="text-slate-300">|</span>
-          <button onclick="deleteBranch('${escapeHtml(br.id)}')" class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
+          <button ${actionAttributes("deleteBranch", br.id)} class="text-red-500 text-xs font-semibold hover:underline">حذف</button>
         </td>
       </tr>`,
         )
@@ -1280,20 +1361,33 @@ async function loadPharmacyStats() {
 }
 
 let currentAdminSales = [];
+let adminSalesPage = 1;
+let adminSalesRequest = 0;
+const ADMIN_SALES_PAGE_SIZE = 50;
 
-async function loadAdminSales() {
+async function loadAdminSales(page = 1) {
   const tbl = document.getElementById("detInvoicesTbl");
-  if (!tbl) return;
+  const pagination = document.getElementById("detInvoicesPagination");
+  if (!tbl || !currentDetId) return;
+  page = Number.isInteger(page) && page > 0 ? page : 1;
+  const pharmacyId = currentDetId;
+  const request = ++adminSalesRequest;
+  currentAdminSales = [];
+  if (pagination) pagination.innerHTML = "";
   tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>جاري التحميل...</td></tr>`;
   
   try {
-    const res = await apiGetAdminSales(currentDetId);
+    // One extra row determines whether another page exists without a total-count API.
+    const res = await apiGetAdminSales(pharmacyId, ADMIN_SALES_PAGE_SIZE + 1, (page - 1) * ADMIN_SALES_PAGE_SIZE);
+    if (request !== adminSalesRequest || pharmacyId !== currentDetId) return;
     if (!res || !res.success) {
-      currentAdminSales = [];
-      tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
-      return;
+      throw new Error("Unable to load sales");
     }
-    currentAdminSales = res.sales || [];
+    const sales = Array.isArray(res.sales) ? res.sales : [];
+    const hasNext = sales.length > ADMIN_SALES_PAGE_SIZE;
+    currentAdminSales = sales.slice(0, ADMIN_SALES_PAGE_SIZE);
+    if (!currentAdminSales.length && page > 1) return loadAdminSales(page - 1);
+    adminSalesPage = page;
     
     if (currentAdminSales.length === 0) {
       tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
@@ -1305,26 +1399,31 @@ async function loadAdminSales() {
     
     tbl.innerHTML = currentAdminSales.map(s => `
       <tr class="hover:bg-slate-50 transition group">
-        <td class="px-4 py-3 font-mono text-xs text-slate-500 rounded-r-xl">#${(s.id || "").slice(0, 8)}</td>
+        <td class="px-4 py-3 font-mono text-xs text-slate-500 rounded-r-xl">#${escapeHtml(String(s.id || "").slice(0, 8))}</td>
         <td class="px-4 py-3 text-slate-600" dir="ltr">${fDate(s.date)}</td>
         <td class="px-4 py-3 font-bold text-emerald-600" dir="ltr">${fMoney(s.total)}</td>
         <td class="px-4 py-3 text-slate-500">${s.paymentMethod === "card" ? "💳 بطاقة" : s.paymentMethod === "debt" ? "📒 ذمم" : "💵 كاش"}</td>
-        <td class="px-4 py-3 text-slate-600">${s.cashierName || "غير محدد"}</td>
+        <td class="px-4 py-3 text-slate-600">${escapeHtml(s.cashierName || "غير محدد")}</td>
         <td class="px-4 py-3 rounded-l-xl">
           <div class="flex gap-2">
-            <button onclick="viewAdminSale('${s.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-lg transition" title="عرض التفاصيل">
+            <button ${actionAttributes("viewAdminSale", s.id)} class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-lg transition" title="عرض التفاصيل">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             </button>
-            <button onclick="deleteAdminSale('${s.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-lg transition" title="حذف إجباري">
+            <button ${actionAttributes("deleteAdminSale", s.id)} class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-lg transition" title="حذف إجباري">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             </button>
           </div>
         </td>
       </tr>
     `).join("");
+    if (pagination) pagination.innerHTML = `
+      <span class="text-sm text-slate-500 self-center">صفحة ${page}</span>
+      <button class="page-btn" ${page === 1 ? "disabled" : ""} ${actionAttributes("adminSalesPage", "")} data-page="${page - 1}">السابق</button>
+      <button class="page-btn" ${hasNext ? "" : "disabled"} ${actionAttributes("adminSalesPage", "")} data-page="${page + 1}">التالي</button>`;
     
   } catch(e) {
-    tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">لا توجد فواتير مبيعات مسجلة لهذه الصيدلية حتى الآن.</td></tr>`;
+    if (request !== adminSalesRequest || pharmacyId !== currentDetId) return;
+    tbl.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">تعذر تحميل الفواتير. حاول مجدداً.</td></tr>`;
   }
 }
 
@@ -1334,7 +1433,9 @@ function viewAdminSale(saleId) {
   
   let customerName = "غير محدد";
   if (s.customer) {
-    if (typeof s.customer === 'string' && s.customer.startsWith('{')) {
+    if (typeof s.customer === 'object') {
+      customerName = s.customer.name || "غير محدد";
+    } else if (typeof s.customer === 'string' && s.customer.startsWith('{')) {
       try {
         const cObj = JSON.parse(s.customer);
         customerName = cObj.name || s.customer;
@@ -1379,7 +1480,7 @@ function viewAdminSale(saleId) {
       return `
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
         <td class="px-4 py-2 font-semibold text-slate-700">${escapeHtml(name)}</td>
-        <td class="px-4 py-2">${qty}</td>
+        <td class="px-4 py-2">${escapeHtml(qty)}</td>
         <td class="px-4 py-2" dir="ltr">${new Intl.NumberFormat("en-US").format(price)} ₪</td>
         <td class="px-4 py-2 font-bold text-slate-800" dir="ltr">${new Intl.NumberFormat("en-US").format(qty * price)} ₪</td>
       </tr>`;
@@ -1396,7 +1497,7 @@ async function deleteAdminSale(saleId) {
     const res = await apiDeleteAdminSale(currentDetId, saleId);
     if (res.success) {
       toast("تم حذف الفاتورة بنجاح");
-      loadAdminSales();
+      loadAdminSales(adminSalesPage);
     } else {
       toast("فشل حذف الفاتورة");
     }
@@ -1416,13 +1517,15 @@ async function saveDetBasics() {
     email: document.getElementById("dbEmail")
       ? document.getElementById("dbEmail").value.trim()
       : "",
-    password: document.getElementById("dbPassword")
-      ? document.getElementById("dbPassword").value
-      : "",
   };
+  const newPassword = document.getElementById("dbPassword")?.value;
+  if (newPassword) body.password = newPassword;
   try {
     const d = await apiSavePharmacy(currentDetId, body);
-    if (d.success) toast("تم حفظ البيانات الأساسية");
+    if (d.success) {
+      document.getElementById("dbPassword").value = "";
+      toast("تم حفظ البيانات الأساسية");
+    }
     else toast("خطأ ما", "error");
   } catch (e) {
     toast("خطأ", "error");
@@ -1435,7 +1538,7 @@ function populateBranchSelect() {
   if (!select) return;
   let html = '<option value="">الفرع الرئيسي / بدون تحديد</option>';
   currentDetBranches.forEach((b) => {
-    html += `<option value="${b.id}">${b.name}</option>`;
+    html += `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)}</option>`;
   });
   select.innerHTML = html;
 }
@@ -1458,7 +1561,7 @@ function openAddStaff() {
   document.getElementById("stBranch").value = "";
   toggleModal('staffModal', true);
 }
-function openEditStaff(id, name, email, role, branchId, password) {
+function openEditStaff(id, name, email, role, branchId) {
   currentEditStaffId = id;
   if (id && (!name || !email) && window.__staffMap && window.__staffMap[id]) {
     const s = window.__staffMap[id];
@@ -1466,7 +1569,6 @@ function openEditStaff(id, name, email, role, branchId, password) {
     email = s.email;
     role = s.role;
     branchId = s.branch;
-    password = s.password;
   }
   const h3 = document.getElementById("staffModalHeading") || document.querySelector("#staffModal h3");
   if (h3) h3.textContent = "تعديل بيانات الموظف";
@@ -1478,7 +1580,7 @@ function openEditStaff(id, name, email, role, branchId, password) {
   if (passReq) passReq.textContent = "اختياري عند التعديل";
   document.getElementById("stName").value = (name && name !== 'null') ? name : "";
   document.getElementById("stEmail").value = (email && email !== 'null') ? email : "";
-  document.getElementById("stPass").value = (password && password !== 'null') ? password : "";
+  document.getElementById("stPass").value = "";
   document.getElementById("stRole").value = (role && role !== 'null') ? role : "pharmacist";
   populateBranchSelect();
   document.getElementById("stBranch").value = (branchId && branchId !== 'null') ? branchId : "";
@@ -1491,10 +1593,11 @@ async function saveStaff() {
   const b = {
     name: document.getElementById("stName").value,
     email: document.getElementById("stEmail").value,
-    password: document.getElementById("stPass").value || "",
     role: document.getElementById("stRole").value,
     branch: document.getElementById("stBranch").value,
   };
+  const newPassword = document.getElementById("stPass").value;
+  if (newPassword) b.password = newPassword;
   if (!b.name || !b.email || (!b.password && !currentEditStaffId))
     return toast("أكمل الحقول", "warning");
   try {
@@ -1515,7 +1618,7 @@ async function toggleStaffStatus(staffId) {
   
   if (!existing || !existing.name || existing.name === 'null') {
     try {
-      const res = await apiFetch(`/api/admin/pharmacies/${currentDetId}/staff`).then(r => r.json());
+      const res = await apiFetch(`/api/admin/pharmacies/${encodeURIComponent(currentDetId)}/staff`).then(r => r.json());
       if (res && res.staff) {
         currentDetStaff = res.staff;
         window.__staffMap = {};
@@ -1537,7 +1640,6 @@ async function toggleStaffStatus(staffId) {
     const payload = {
       name: (existing.name && existing.name !== 'null') ? existing.name : "موظف",
       email: (existing.email && existing.email !== 'null') ? existing.email : (existing.name || "staff"),
-      password: existing.password || "12345",
       role: (existing.role && existing.role !== 'null') ? existing.role : "pharmacist",
       branch: (existing.branch && existing.branch !== 'null') ? existing.branch : "",
       phone: existing.phone || "",
@@ -1662,7 +1764,7 @@ async function loadNotifications() {
         list.innerHTML = res.notifications
           .map(
             (n) => `
-          <div onclick="tab('${escapeHtml(n.tab)}'); toggleNotifications();" class="p-3 hover:bg-slate-50 cursor-pointer rounded-xl transition flex items-start gap-3 mb-1">
+          <div ${actionAttributes("notification", n.tab)} class="p-3 hover:bg-slate-50 cursor-pointer rounded-xl transition flex items-start gap-3 mb-1">
             <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
               n.type === "amber"
                 ? "bg-amber-100 text-amber-600"
@@ -1723,7 +1825,7 @@ async function sendBroadcast() {
   try {
     const r = await apiBroadcast(title, message, type);
 
-    if (r.success || r.message) {
+    if (r.success === true) {
       toast("تم إرسال الإشعار بنجاح ✓");
       document.getElementById("bTitle").value = "";
       document.getElementById("bMessage").value = "";
@@ -1731,9 +1833,7 @@ async function sendBroadcast() {
       toast(r.error || "فشل إرسال الإشعار", "error");
     }
   } catch (e) {
-    toast("تم إرسال الإشعار", "success"); // assuming mock endpoint works for now
-    document.getElementById("bTitle").value = "";
-    document.getElementById("bMessage").value = "";
+    toast("تعذر تأكيد إرسال الإشعار. تحقق من الاتصال وحاول مجدداً.", "error");
   }
 }
 
@@ -1765,26 +1865,26 @@ function exportPharmaciesCSV() {
     p.isActive ? "نعم" : "لا",
   ]);
 
-  // Sanitize cells against CSV Formula Injection (Excel / LibreOffice DDE execution)
+  // Quote CSV fields and neutralize leading spreadsheet formula/control characters.
   const sanitizeCsvCell = (cell) => {
     let val = (cell === null || cell === undefined ? "" : cell) + "";
-    if (/^[=+\-@\t\r]/.test(val)) {
+    if (/^[\u0000-\u0020]*[=+\-@]/.test(val) || /^[\t\r\n]/.test(val)) {
       val = "'" + val;
     }
     return `"${val.replace(/"/g, '""')}"`;
   };
 
-  let csvContent =
-    "data:text/csv;charset=utf-8,\uFEFF" +
+  const csvContent =
+    "\uFEFF" +
     headers.join(";") +
     "\n" +
     rows
       .map((e) => e.map(sanitizeCsvCell).join(";"))
       .join("\n");
 
-  const encodedUri = encodeURI(csvContent);
+  const blobUrl = URL.createObjectURL(new Blob([csvContent], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
+  link.setAttribute("href", blobUrl);
   link.setAttribute(
     "download",
     `pharmacies_export_${new Date().toISOString().split("T")[0]}.csv`,
@@ -1792,6 +1892,7 @@ function exportPharmaciesCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 }
 
 // Manual Renew
@@ -1820,7 +1921,7 @@ async function submitManualRenew() {
   try {
     const r = await apiRenewSubscription(renewPharmacyId, months, amountPaid);
 
-    if (r.success || r.message) {
+    if (r.success === true) {
       toast("تم تجديد الاشتراك بنجاح ✓");
       closeRenewModal();
       loadPharms();
@@ -1829,21 +1930,7 @@ async function submitManualRenew() {
       toast(r.error || "فشل تجديد الاشتراك", "error");
     }
   } catch (e) {
-    const p = pharms.find((x) => x.id === renewPharmacyId);
-    if (p) {
-      const ex = p.subscriptionExpiry
-        ? new Date(p.subscriptionExpiry)
-        : new Date();
-      if (ex.getTime() < new Date().getTime()) ex.setTime(new Date().getTime());
-      ex.setMonth(ex.getMonth() + months);
-      p.subscriptionExpiry = ex.toISOString();
-      p.totalPaid = (Number(p.totalPaid) || 0) + amountPaid;
-      p.isActive = true;
-    }
-    toast("تم تجديد الاشتراك ✓");
-    closeRenewModal();
-    loadPharms();
-    loadDash();
+    toast("تعذر تأكيد التجديد. حدّث بيانات الصيدلية للتحقق قبل إعادة المحاولة.", "error");
   }
 
   btn.disabled = false;
@@ -1897,8 +1984,7 @@ async function submitPrivateNotify() {
       closePrivateNotifyModal();
     } else toast(r.error || "فشل الإرسال", "error");
   } catch (e) {
-    toast("تم إرسال الإشعار", "success");
-    closePrivateNotifyModal();
+    toast("تعذر تأكيد إرسال الإشعار. تحقق من الاتصال وحاول مجدداً.", "error");
   }
 }
 
@@ -1980,10 +2066,10 @@ function renderPlatformStaff(staffList) {
                       ${
                         s.id === "superadmin-owner"
                           ? '<span class="text-slate-400 text-xs">أساسي</span>'
-                          : getSession().id === "superadmin-owner"
+                          : getSession()?.platformRole === "owner"
                             ? `
-              <button onclick="editPlatformStaff('${escapeHtml(s.id)}')" class="text-blue-600 hover:text-blue-800 ml-3">تعديل</button>
-              <button onclick="deletePlatformStaff('${escapeHtml(s.id)}')" class="text-red-600 hover:text-red-800">حذف</button>
+              <button ${actionAttributes("editPlatformStaff", s.id)} class="text-blue-600 hover:text-blue-800 ml-3">تعديل</button>
+              <button ${actionAttributes("deletePlatformStaff", s.id)} class="text-red-600 hover:text-red-800">حذف</button>
             `
                             : ""
                       }
@@ -2040,14 +2126,16 @@ async function savePlatformStaff() {
 
   const method = id ? "PUT" : "POST";
   const url = id
-    ? `/api/admin/platform-staff/${id}`
+    ? `/api/admin/platform-staff/${encodeURIComponent(id)}`
     : "/api/admin/platform-staff";
+  const body = { name, email, role };
+  if (password) body.password = password;
 
   try {
     const res = await apiFetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (data.success) {
@@ -2066,7 +2154,7 @@ async function savePlatformStaff() {
 async function deletePlatformStaff(id) {
   showConfirm("حذف موظف", "هل أنت متأكد من حذف هذا الموظف؟", "red", async () => {
     try {
-      const res = await apiFetch(`/api/admin/platform-staff/${id}`, {
+      const res = await apiFetch(`/api/admin/platform-staff/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -2106,9 +2194,10 @@ function renderPlans() {
   }
   container.innerHTML = plans.map(p => {
     const isAct = p.isActive;
-    const oldPriceHtml = p.oldPrice ? `<span class="line-through text-slate-400 text-sm ml-2">${p.oldPrice} ₪</span>` : '';
+    const oldPriceHtml = p.oldPrice ? `<span class="line-through text-slate-400 text-sm ml-2">${escapeHtml(p.oldPrice)} ₪</span>` : '';
     let parsedFeatures = [];
     try { parsedFeatures = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []); } catch(e){}
+    if (!Array.isArray(parsedFeatures)) parsedFeatures = [];
     const featuresList = parsedFeatures.map(f => `<li class="flex items-start gap-2 text-sm text-slate-600 mb-2"><svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>${escapeHtml(f)}</li>`).join('');
     return `
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 relative flex flex-col h-full">
@@ -2124,8 +2213,8 @@ function renderPlans() {
         ${featuresList}
       </ul>
       <div class="flex gap-2 mt-auto">
-        <button onclick="editPlan('${escapeHtml(p.id)}')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl py-2.5 text-sm transition">تعديل</button>
-        <button onclick="deletePlan('${escapeHtml(p.id)}')" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl py-2.5 text-sm transition">حذف</button>
+        <button ${actionAttributes("editPlan", p.id)} class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl py-2.5 text-sm transition">تعديل</button>
+        <button ${actionAttributes("deletePlan", p.id)} class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl py-2.5 text-sm transition">حذف</button>
       </div>
     </div>
     `;
@@ -2160,6 +2249,7 @@ function editPlan(id) {
   document.getElementById("planIsActive").checked = p.isActive;
   let parsedFeatures = [];
   try { parsedFeatures = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []); } catch(e){}
+  if (!Array.isArray(parsedFeatures)) parsedFeatures = [];
   document.getElementById("planFeatures").value = parsedFeatures.join('\n');
   toggleModal('planModal', true);
 }
@@ -2276,7 +2366,7 @@ async function loadAdminCustomers() {
       const branches = [...new Set(currentAdminCustomers.map(c => c.branch_name).filter(Boolean))];
       if (branches.length > 0) {
         let opts = '<option value="all">كل الفروع</option>';
-        branches.forEach(b => opts += `<option value="${b}">${b}</option>`);
+        branches.forEach(b => opts += `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`);
         filter.innerHTML = opts;
         filter.value = "all";
         // Do not unhide here, because default tab is list
@@ -2412,7 +2502,7 @@ async function loadAdminSuppliers() {
       
       if (branches.length > 0) {
         let opts = '<option value="all">كل الفروع</option>';
-        branches.forEach(b => opts += `<option value="${b}">${b}</option>`);
+        branches.forEach(b => opts += `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`);
         filter.innerHTML = opts;
         filter.value = "all";
         // do not unhide here
@@ -2478,7 +2568,7 @@ function renderAdminPurchases() {
         <td class="px-4 py-3">${statusBadge}</td>
         <td class="px-4 py-3 text-slate-500">${escapeHtml(p.branch_name || "الفرع الرئيسي")}</td>
         <td class="px-4 py-3 text-center">
-          <button onclick="viewAdminPurchase('${escapeHtml(p.id)}')" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm" title="عرض تفاصيل الفاتورة">
+          <button ${actionAttributes("viewAdminPurchase", p.id)} class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm" title="عرض تفاصيل الفاتورة">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             عرض
           </button>
@@ -2525,7 +2615,7 @@ async function viewAdminPurchase(purchaseId) {
   // If items are empty, fetch directly from pharmacy purchase-invoices as guaranteed fallback
   if ((!items || items.length === 0) && currentDetId) {
     try {
-      const res = await apiFetch("/api/pharmacies/" + currentDetId + "/purchase-invoices");
+      const res = await apiFetch("/api/pharmacies/" + encodeURIComponent(currentDetId) + "/purchase-invoices");
       const data = await res.json();
       if (data && data.invoices) {
         const found = data.invoices.find(x => x.id === p.id || (p.invoice_number && x.invoice_number === p.invoice_number));
@@ -2566,7 +2656,7 @@ async function viewAdminPurchase(purchaseId) {
       <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 text-xs">
         <td class="px-4 py-2.5 text-slate-400 font-mono text-center">${idx + 1}</td>
         <td class="px-4 py-2.5 font-bold text-slate-800">${escapeHtml(name)}</td>
-        <td class="px-4 py-2.5 font-semibold text-slate-700">${qty}</td>
+        <td class="px-4 py-2.5 font-semibold text-slate-700">${escapeHtml(qty)}</td>
         <td class="px-4 py-2.5 font-mono text-slate-600" dir="ltr">${fMoney(cost)}</td>
         <td class="px-4 py-2.5 font-bold text-slate-900" dir="ltr">${fMoney(total)}</td>
       </tr>

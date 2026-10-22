@@ -2,8 +2,20 @@ const API = "https://aessaaessa.alwaysdata.net";
 
 // Session Management
 function getSession() {
-  const session = localStorage.getItem("sa_session");
-  return session ? JSON.parse(session) : null;
+  const sessionStr = localStorage.getItem("sa_session");
+  if (!sessionStr) return null;
+  try {
+    const session = JSON.parse(sessionStr);
+    // Invalidate legacy or tokenless sessions and force re-login
+    if (!session || !session.token) {
+      clearSession();
+      return null;
+    }
+    return session;
+  } catch (e) {
+    clearSession();
+    return null;
+  }
 }
 
 function saveSession(user) {
@@ -14,19 +26,19 @@ function clearSession() {
   localStorage.removeItem("sa_session");
 }
 
-// Intercept fetch to add any headers if needed in the future
+// Intercept fetch to add Bearer JWT Authorization header
 async function apiFetch(endpoint, options = {}) {
   const session = getSession();
-  if (session && session.id) {
-    options.headers = {
-      ...options.headers,
-      "x-admin-id": session.id,
-    };
+  options.headers = {
+    ...options.headers,
+  };
+  if (session && session.token) {
+    options.headers["Authorization"] = `Bearer ${session.token}`;
   }
 
   const response = await fetch(`${API}${endpoint}`, options);
   
-  if (response.status === 401) {
+  if (response.status === 401 && endpoint !== "/api/auth/login") {
     clearSession();
     window.location.reload();
   }
@@ -42,6 +54,23 @@ async function apiLogin(email, password) {
     body: JSON.stringify({ email, password, role: "superadmin" }),
   });
   return r.json();
+}
+
+async function apiLogout() {
+  if (!getSession()) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await apiFetch("/api/auth/logout", {
+      method: "POST",
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error("Unable to revoke session");
+    const result = await response.json();
+    if (!result.success) throw new Error("Unable to revoke session");
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // Admin APIs
@@ -62,7 +91,7 @@ async function apiGetPharmacies() {
 }
 
 async function apiSavePharmacy(id, body) {
-  const url = id ? `/api/admin/pharmacies/${id}` : `/api/admin/pharmacies`;
+  const url = id ? `/api/admin/pharmacies/${encodeURIComponent(id)}` : `/api/admin/pharmacies`;
   return apiFetch(url, {
     method: id ? "PUT" : "POST",
     headers: { "Content-Type": "application/json" },
@@ -71,7 +100,7 @@ async function apiSavePharmacy(id, body) {
 }
 
 async function apiTogglePharmacy(id, currentStatus) {
-  return apiFetch(`/api/admin/pharmacies/${id}/toggle`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/toggle`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ isActive: !currentStatus }),
@@ -79,7 +108,7 @@ async function apiTogglePharmacy(id, currentStatus) {
 }
 
 async function apiDeletePharmacy(id) {
-  return apiFetch(`/api/admin/pharmacies/${id}`, { method: "DELETE" }).then(
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}`, { method: "DELETE" }).then(
     (r) => r.json(),
   );
 }
@@ -91,7 +120,7 @@ async function apiGetUsers() {
 async function apiGetPharmacySales(pharmacyId) {
   // Arbitrary wide date range for total sales
   return apiFetch(
-    `/api/pharmacies/${pharmacyId}/sales?from=2020-01-01&to=2030-12-31`,
+    `/api/pharmacies/${encodeURIComponent(pharmacyId)}/sales?from=2020-01-01&to=2030-12-31`,
   ).then((r) => r.json());
 }
 
@@ -100,7 +129,7 @@ async function apiGetTickets() {
 }
 
 async function apiUpdateTicket(id, status) {
-  return apiFetch(`/api/admin/tickets/${id}`, {
+  return apiFetch(`/api/admin/tickets/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
@@ -108,7 +137,7 @@ async function apiUpdateTicket(id, status) {
 }
 
 async function apiGetSettings() {
-  return apiFetch("/api/admin/settings?t=" + Date.now()).then((r) => r.json());
+  return apiFetch("/api/admin/settings/private?t=" + Date.now()).then((r) => r.json());
 }
 
 async function apiSaveSettings(body) {
@@ -123,26 +152,26 @@ async function apiGetSubRequests() {
   return apiFetch("/api/admin/subscription-requests").then((r) => r.json());
 }
 async function apiApproveSubRequest(id) {
-  return apiFetch(`/api/admin/subscription-requests/${id}/approve`, {
+  return apiFetch(`/api/admin/subscription-requests/${encodeURIComponent(id)}/approve`, {
     method: "POST",
   }).then((r) => r.json());
 }
 async function apiRejectSubRequest(id) {
-  return apiFetch(`/api/admin/subscription-requests/${id}/reject`, {
+  return apiFetch(`/api/admin/subscription-requests/${encodeURIComponent(id)}/reject`, {
     method: "POST",
   }).then((r) => r.json());
 }
 async function apiDeleteSubRequest(id) {
-  return apiFetch(`/api/admin/subscription-requests/${id}`, {
+  return apiFetch(`/api/admin/subscription-requests/${encodeURIComponent(id)}`, {
     method: "DELETE",
   }).then((r) => r.json());
 }
 
 async function apiGetPharmacyDetails(id) {
   const [ph, branches, staff] = await Promise.all([
-    apiFetch(`/api/admin/pharmacies/${id}`).then((r) => r.json()),
-    apiFetch(`/api/admin/pharmacies/${id}/branches`).then((r) => r.json()),
-    apiFetch(`/api/admin/pharmacies/${id}/staff`).then((r) => r.json()),
+    apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}`).then((r) => r.json()),
+    apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/branches`).then((r) => r.json()),
+    apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/staff`).then((r) => r.json()),
   ]);
   return {
     pharmacy: ph.pharmacy,
@@ -152,56 +181,56 @@ async function apiGetPharmacyDetails(id) {
 }
 
 async function apiGetPharmacyStats(id) {
-  const res = await apiFetch(`/api/admin/pharmacies/${id}/stats`);
+  const res = await apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/stats`);
   return res.json();
 }
 
 async function apiGetAdminSales(id, limit = 50, offset = 0) {
-  const res = await apiFetch(`/api/admin/pharmacies/${id}/sales?limit=${limit}&offset=${offset}`);
+  const res = await apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/sales?limit=${limit}&offset=${offset}`);
   return res.json();
 }
 
 async function apiDeleteAdminSale(phId, saleId) {
-  const res = await apiFetch(`/api/admin/pharmacies/${phId}/sales/${saleId}`, {
+  const res = await apiFetch(`/api/admin/pharmacies/${encodeURIComponent(phId)}/sales/${encodeURIComponent(saleId)}`, {
     method: "DELETE"
   });
   return res.json();
 }
 
 async function apiToggleReadOnly(id, isReadOnly) {
-  return apiFetch(`/api/admin/pharmacies/${id}/readonly`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/readonly`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ isReadOnly }),
   }).then((r) => r.json());
 }
 async function apiAddStaff(pharmacyId, body) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/staff`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/staff`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }).then((r) => r.json());
 }
 async function apiDeleteStaff(pharmacyId, staffId) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/staff/${staffId}`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/staff/${encodeURIComponent(staffId)}`, {
     method: "DELETE",
   }).then((r) => r.json());
 }
 async function apiAddBranch(pharmacyId, body) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/branches`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/branches`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }).then((r) => r.json());
 }
 async function apiDeleteBranch(pharmacyId, branchId) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/branches/${branchId}`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/branches/${encodeURIComponent(branchId)}`, {
     method: "DELETE",
   }).then((r) => r.json());
 }
 
 async function apiUpdateStaff(pharmacyId, staffId, body) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/staff/${staffId}`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/staff/${encodeURIComponent(staffId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -209,7 +238,7 @@ async function apiUpdateStaff(pharmacyId, staffId, body) {
 }
 
 async function apiUpdateBranch(pharmacyId, branchId, body) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/branches/${branchId}`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/branches/${encodeURIComponent(branchId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -225,7 +254,7 @@ async function apiGetPlans() {
 }
 
 async function apiSavePlan(id, body) {
-  const url = id ? `/api/admin/subscription-plans/${id}` : "/api/admin/subscription-plans";
+  const url = id ? `/api/admin/subscription-plans/${encodeURIComponent(id)}` : "/api/admin/subscription-plans";
   return apiFetch(url, {
     method: id ? "PUT" : "POST",
     headers: { "Content-Type": "application/json" },
@@ -234,7 +263,7 @@ async function apiSavePlan(id, body) {
 }
 
 async function apiDeletePlan(id) {
-  return apiFetch(`/api/admin/subscription-plans/${id}`, { method: "DELETE" }).then((r) => r.json());
+  return apiFetch(`/api/admin/subscription-plans/${encodeURIComponent(id)}`, { method: "DELETE" }).then((r) => r.json());
 }
 
 async function apiBroadcast(title, message, type) {
@@ -246,7 +275,7 @@ async function apiBroadcast(title, message, type) {
 }
 
 async function apiRenewSubscription(pharmacyId, months, amountPaid) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/renew`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/renew`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ months, amountPaid }),
@@ -254,7 +283,7 @@ async function apiRenewSubscription(pharmacyId, months, amountPaid) {
 }
 
 async function apiResetPharmacyPassword(pharmacyId, newPassword) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/reset-password`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/reset-password`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ newPassword }),
@@ -262,7 +291,7 @@ async function apiResetPharmacyPassword(pharmacyId, newPassword) {
 }
 
 async function apiNotifyPharmacy(pharmacyId, title, message) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/notify`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/notify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, message }),
@@ -270,7 +299,7 @@ async function apiNotifyPharmacy(pharmacyId, title, message) {
 }
 
 async function apiSetCustomPrice(pharmacyId, customPrice) {
-  return apiFetch(`/api/admin/pharmacies/${pharmacyId}/custom-price`, {
+  return apiFetch(`/api/admin/pharmacies/${encodeURIComponent(pharmacyId)}/custom-price`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customPrice: customPrice === "" ? null : parseFloat(customPrice) }),
@@ -279,14 +308,14 @@ async function apiSetCustomPrice(pharmacyId, customPrice) {
 
 
 async function apiGetAdminCustomers(phId) {
-  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/customers");
+  const res = await apiFetch("/api/admin/pharmacies/" + encodeURIComponent(phId) + "/customers");
   return res.json();
 }
 async function apiGetAdminDebtPayments(phId) {
   try {
     const [debtRes, salesRes] = await Promise.allSettled([
-      apiFetch("/api/admin/pharmacies/" + phId + "/debt-payments").then((r) => r.json()),
-      apiFetch("/api/pharmacies/" + phId + "/sales").then((r) => r.json()),
+      apiFetch("/api/admin/pharmacies/" + encodeURIComponent(phId) + "/debt-payments").then((r) => r.json()),
+      apiFetch("/api/pharmacies/" + encodeURIComponent(phId) + "/sales").then((r) => r.json()),
     ]);
 
     let payments = [];
@@ -334,7 +363,7 @@ async function apiGetAdminDebtPayments(phId) {
   } catch (err) {
     console.error("apiGetAdminDebtPayments error:", err);
     try {
-      const fallback = await apiFetch("/api/pharmacies/" + phId + "/sales").then(r => r.json());
+      const fallback = await apiFetch("/api/pharmacies/" + encodeURIComponent(phId) + "/sales").then(r => r.json());
       const debtSales = (fallback.sales || []).filter(s => s.status === "debt_payment").map(s => {
         let custName = "عميل";
         if (typeof s.customer === "string") {
@@ -359,15 +388,15 @@ async function apiGetAdminDebtPayments(phId) {
 }
 
 async function apiGetAdminSuppliers(phId) {
-  const res = await apiFetch("/api/admin/pharmacies/" + phId + "/suppliers");
+  const res = await apiFetch("/api/admin/pharmacies/" + encodeURIComponent(phId) + "/suppliers");
   return res.json();
 }
 
 async function apiGetAdminPurchases(phId) {
   try {
     const [adminRes, phRes] = await Promise.allSettled([
-      apiFetch("/api/admin/pharmacies/" + phId + "/purchases").then((r) => r.json()),
-      apiFetch("/api/pharmacies/" + phId + "/purchase-invoices").then((r) => r.json()),
+      apiFetch("/api/admin/pharmacies/" + encodeURIComponent(phId) + "/purchases").then((r) => r.json()),
+      apiFetch("/api/pharmacies/" + encodeURIComponent(phId) + "/purchase-invoices").then((r) => r.json()),
     ]);
 
     const adminPurchases = (adminRes.status === "fulfilled" && adminRes.value && adminRes.value.purchases) ? adminRes.value.purchases : [];
@@ -396,7 +425,7 @@ async function apiGetAdminPurchases(phId) {
   } catch (err) {
     console.error("apiGetAdminPurchases error:", err);
     try {
-      const fallback = await apiFetch("/api/pharmacies/" + phId + "/purchase-invoices").then(r => r.json());
+      const fallback = await apiFetch("/api/pharmacies/" + encodeURIComponent(phId) + "/purchase-invoices").then(r => r.json());
       return { success: true, purchases: fallback.invoices || [] };
     } catch (e2) {
       return { success: false, purchases: [] };
