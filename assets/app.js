@@ -192,7 +192,7 @@ async function login() {
     }
   } catch (ex) {
     err.textContent =
-      "تعذر الاتصال بالخادم. تأكد من تشغيل السيرفر على المنفذ 3001";
+      "تعذر الاتصال بالخادم الرئيسي. يرجى التحقق من حالة السيرفر أو الاتصال بالإنترنت";
     err.classList.remove("hidden");
   }
   btn.innerHTML = "تسجيل الدخول";
@@ -645,12 +645,19 @@ async function updateTicket(id, status) {
 async function loadSettings() {
   try {
     const r = await apiGetSettings();
-    const s = r.settings;
+    const s = r?.settings;
     if (!s) return;
-    document.getElementById("sName").value = s.systemName || "";
-    document.getElementById("sEmail").value = s.adminEmail || "";
-    document.getElementById("sPass").value = "";
-    document.getElementById("sMaint").checked = !!s.isMaintenance;
+
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val ?? "";
+    };
+
+    setVal("sName", s.systemName);
+    setVal("sEmail", s.adminEmail);
+    setVal("sPass", "");
+    const maintEl = document.getElementById("sMaint");
+    if (maintEl) maintEl.checked = !!s.isMaintenance;
 
     const m = document.getElementById("maintBadge");
     const ms = document.getElementById("maintBadgeSidebar");
@@ -662,50 +669,50 @@ async function loadSettings() {
       if (ms) ms.classList.add("hidden");
     }
 
-    document.getElementById("sCompany").value = s.companyName || "";
-    document.getElementById("sBankName").value = s.bankName || "";
-    document.getElementById("sBankAccount").value = s.bankAccount || "";
-    if(document.getElementById("sBankAccountName")) document.getElementById("sBankAccountName").value = s.bankAccountName || "";
-    document.getElementById("sBankIban").value = s.bankIban || "";
-    document.getElementById("sWallet").value = s.walletNumber || "";
-    if(document.getElementById("sPalpayName")) document.getElementById("sPalpayName").value = s.palpayName || "";
-    if(document.getElementById("sJawwalpayName")) document.getElementById("sJawwalpayName").value = s.jawwalpayName || "";
-    document.getElementById("sWhatsapp").value = s.whatsappNumber || "";
-    document.getElementById("sDevWhatsapp").value =
-      s.devWhatsapp || "https://wa.me/";
-    document.getElementById("sDevInstagram").value =
-      s.devInstagram || "https://instagram.com/";
-    document.getElementById("sDevWebsite").value = s.devWebsite || "https://";
+    setVal("sCompany", s.companyName);
+    setVal("sBankName", s.bankName);
+    setVal("sBankAccount", s.bankAccount);
+    setVal("sBankAccountName", s.bankAccountName);
+    setVal("sBankIban", s.bankIban);
+    setVal("sWallet", s.walletNumber);
+    setVal("sPalpayName", s.palpayName);
+    setVal("sJawwalpayName", s.jawwalpayName);
+    setVal("sWhatsapp", s.whatsappNumber);
+    setVal("sDevWhatsapp", s.devWhatsapp || "https://wa.me/");
+    setVal("sDevInstagram", s.devInstagram || "https://instagram.com/");
+    setVal("sDevWebsite", s.devWebsite || "https://");
   } catch (e) {
     toast("خطأ في تحميل الإعدادات", "error");
   }
 }
 
 async function saveSettings() {
+  const getVal = (id, fallback = "") => document.getElementById(id)?.value ?? fallback;
   const body = {
-    systemName: document.getElementById("sName").value,
-    adminEmail: document.getElementById("sEmail").value,
-    isMaintenance: document.getElementById("sMaint").checked,
+    systemName: getVal("sName"),
+    adminEmail: getVal("sEmail"),
+    isMaintenance: Boolean(document.getElementById("sMaint")?.checked),
 
-    companyName: document.getElementById("sCompany").value,
-    bankName: document.getElementById("sBankName").value,
-    bankAccount: document.getElementById("sBankAccount").value,
-    bankAccountName: document.getElementById("sBankAccountName") ? document.getElementById("sBankAccountName").value : "",
-    bankIban: document.getElementById("sBankIban").value,
-    walletNumber: document.getElementById("sWallet").value,
-    palpayName: document.getElementById("sPalpayName") ? document.getElementById("sPalpayName").value : "",
-    jawwalpayName: document.getElementById("sJawwalpayName") ? document.getElementById("sJawwalpayName").value : "",
-    whatsappNumber: document.getElementById("sWhatsapp").value,
-    devWhatsapp: document.getElementById("sDevWhatsapp").value,
-    devInstagram: document.getElementById("sDevInstagram").value,
-    devWebsite: document.getElementById("sDevWebsite").value,
+    companyName: getVal("sCompany"),
+    bankName: getVal("sBankName"),
+    bankAccount: getVal("sBankAccount"),
+    bankAccountName: getVal("sBankAccountName"),
+    bankIban: getVal("sBankIban"),
+    walletNumber: getVal("sWallet"),
+    palpayName: getVal("sPalpayName"),
+    jawwalpayName: getVal("sJawwalpayName"),
+    whatsappNumber: getVal("sWhatsapp"),
+    devWhatsapp: getVal("sDevWhatsapp"),
+    devInstagram: getVal("sDevInstagram"),
+    devWebsite: getVal("sDevWebsite"),
   };
-  const newAdminPassword = document.getElementById("sPass").value;
+  const newAdminPassword = getVal("sPass");
   if (newAdminPassword) body.adminPassword = newAdminPassword;
   try {
     const d = await apiSaveSettings(body);
     if (d.success) {
-      document.getElementById("sPass").value = "";
+      const passEl = document.getElementById("sPass");
+      if (passEl) passEl.value = "";
       toast("تم حفظ الإعدادات ✓");
       const m = document.getElementById("maintBadge");
       const ms = document.getElementById("maintBadgeSidebar");
