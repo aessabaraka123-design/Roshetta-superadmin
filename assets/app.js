@@ -653,8 +653,9 @@ async function loadSettings() {
       if (el) el.value = val ?? "";
     };
 
+    const session = getSession();
     setVal("sName", s.systemName);
-    setVal("sEmail", s.adminEmail);
+    setVal("sEmail", s.adminEmail || session?.email || "");
     setVal("sPass", "");
     const maintEl = document.getElementById("sMaint");
     if (maintEl) maintEl.checked = !!s.isMaintenance;
