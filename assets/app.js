@@ -953,32 +953,56 @@ window.viewReceipt = async function(idOrUrl, isRequestId = false) {
       if (data.success && data.receipt) {
         url = data.receipt;
       } else {
-        toast("لا يوجد إيصال");
+        toast("لا يوجد صورة مرفقة لهذا الإيصال", "warning");
         return;
       }
     } catch(e) {
-      toast("حدث خطأ أثناء تحميل الإيصال");
+      toast("حدث خطأ أثناء تحميل الإيصال", "error");
       return;
     }
   }
 
+  if (url === 'trial_activation' || url === 'free_trial') {
+    toast("هذا الطلب تفعيل تجريبي بدون صورة إيصال", "info");
+    return;
+  }
+  if (url.startsWith('ref_')) {
+    toast(`رقم الحوالة المدخل: ${url.replace('ref_', '')}`, "info");
+    return;
+  }
+
   try {
-    url = receiptUrl(url);
-    if (url.startsWith('data:')) {
-      const w = window.open("", "_blank");
-      if (!w) return toast("اسمح بفتح نافذة الإيصال ثم حاول مجدداً", "warning");
-      w.opener = null;
-      try {
-        const blob = await fetch(url).then(res => res.blob());
-        const blobUrl = URL.createObjectURL(blob);
-        w.location.href = blobUrl;
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-      } catch (e) {
-        w.close();
-        toast("حدث خطأ أثناء فتح الإيصال", "error");
+    const finalUrl = receiptUrl(url);
+    const modal = document.getElementById("receiptViewModal");
+    const img = document.getElementById("receiptModalImg");
+    const empty = document.getElementById("receiptModalEmpty");
+    const openBtn = document.getElementById("receiptModalOpenBtn");
+
+    if (modal && img) {
+      if (finalUrl) {
+        img.onerror = () => {
+          img.classList.add("hidden");
+          if (empty) {
+            empty.textContent = "تعذر تحميل صورة الإيصال";
+            empty.classList.remove("hidden");
+          }
+        };
+        img.src = finalUrl;
+        img.classList.remove("hidden");
+        if (empty) empty.classList.add("hidden");
+        if (openBtn) {
+          openBtn.href = finalUrl;
+          openBtn.classList.remove("hidden");
+        }
+      } else {
+        img.src = "";
+        img.classList.add("hidden");
+        if (empty) empty.classList.remove("hidden");
+        if (openBtn) openBtn.classList.add("hidden");
       }
+      toggleModal("receiptViewModal", true);
     } else {
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(finalUrl, "_blank", "noopener,noreferrer");
     }
   } catch (e) {
     toast("رابط الإيصال غير صالح", "error");
@@ -1056,7 +1080,7 @@ function renderReqList() {
       <td class="px-4 py-3">${subBadge(r.plan_type)}</td>
       <td class="px-4 py-3">${formatPayMethod(r.payment_method)}</td>
       <td class="px-4 py-3">${formatTransferDetails(r.transferName, r.transferRef)}</td>
-      <td class="px-4 py-3">${r.receipt_url === "trial_activation" ? '<span class="text-emerald-600 font-semibold text-xs">تفعيل تجريبي</span>' : (r.receipt_url || "").startsWith("ref_") ? `<span class="text-slate-600 font-mono text-xs">رقم حوالة: ${escapeHtml(r.receipt_url.replace("ref_", ""))}</span>` : `<a href="#" ${actionAttributes("viewReceipt", r.id)} class="text-blue-500 hover:underline">عرض الإيصال</a>`}</td>
+      <td class="px-4 py-3">${['trial_activation', 'free_trial'].includes(r.receipt_url) ? '<span class="text-emerald-600 font-semibold text-xs">تفعيل تجريبي</span>' : (r.receipt_url || "").startsWith("ref_") ? `<span class="text-slate-600 font-mono text-xs">رقم حوالة: ${escapeHtml(r.receipt_url.replace("ref_", ""))}</span>` : (r.receipt_url ? `<a href="#" ${actionAttributes("viewReceipt", r.id)} class="text-blue-500 hover:underline">عرض الإيصال</a>` : '<span class="text-slate-400 text-xs">بدون إيصال</span>')}</td>
       <td class="px-4 py-3 text-xs text-slate-500">${fd(r.createdAt)}</td>
       <td class="px-4 py-3"><span class="${r.status === "approved" ? "bg-emerald-100 text-emerald-700" : r.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"} text-xs font-semibold px-2.5 py-1 rounded-full">${r.status === "approved" ? "مفعل" : r.status === "rejected" ? "مرفوض" : "قيد المراجعة"}</span></td>
       <td class="px-4 py-3">
