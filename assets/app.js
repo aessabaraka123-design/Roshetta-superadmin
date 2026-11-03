@@ -20,6 +20,7 @@ document.addEventListener("click", (event) => {
   const id = control.dataset.id;
   const actions = {
     openPharmacyDetail, openManualRenew, doDelete,
+    downloadPharmacyBackup: () => downloadPharmacyBackup(id, control.dataset.name),
     approveReq, rejectReq, deleteReq, openEditStaff, toggleStaffStatus,
     deleteStaff, openEditBranch, deleteBranch, viewAdminSale,
     deleteAdminSale, editPlatformStaff, deletePlatformStaff,
@@ -467,6 +468,8 @@ function renderPharmsList() {
       <td class="px-4 py-3"><div class="flex items-center gap-2 flex-wrap">
         <button ${actionAttributes("openPharmacyDetail", p.id)} class="text-blue-600 text-xs font-semibold hover:underline">تعديل</button>
         <span class="text-slate-200">|</span>
+        <button ${actionAttributes("downloadPharmacyBackup", p.id)} data-name="${escapeHtml(p.name)}" class="text-indigo-600 text-xs font-semibold hover:underline" title="تنزيل نسخة احتياطية كاملة لبيانات الصيدلية">تحميل الداتا</button>
+        <span class="text-slate-200">|</span>
         <button ${actionAttributes("openManualRenew", p.id)} class="text-emerald-600 text-xs font-semibold hover:underline">تجديد يدوي</button>
         <span class="text-slate-200">|</span>
         <button ${actionAttributes("doToggle", p.id)} data-active="${Boolean(p.isActive)}" class="${p.isActive ? "text-amber-600" : "text-emerald-600"} text-xs font-semibold hover:underline">${p.isActive ? "تجميد الحساب" : "تنشيط"}</button>
@@ -679,9 +682,9 @@ async function loadSettings() {
     setVal("sPalpayName", s.palpayName);
     setVal("sJawwalpayName", s.jawwalpayName);
     setVal("sWhatsapp", s.whatsappNumber);
-    setVal("sDevWhatsapp", s.devWhatsapp || "https://wa.me/");
-    setVal("sDevInstagram", s.devInstagram || "https://instagram.com/");
-    setVal("sDevWebsite", s.devWebsite || "https://");
+    setVal("sDevWhatsapp", s.devWhatsapp || "");
+    setVal("sDevInstagram", s.devInstagram || "");
+    setVal("sDevWebsite", s.devWebsite || "");
   } catch (e) {
     toast("خطأ في تحميل الإعدادات", "error");
   }
@@ -702,10 +705,10 @@ async function saveSettings() {
     walletNumber: getVal("sWallet"),
     palpayName: getVal("sPalpayName"),
     jawwalpayName: getVal("sJawwalpayName"),
-    whatsappNumber: getVal("sWhatsapp"),
-    devWhatsapp: getVal("sDevWhatsapp"),
-    devInstagram: getVal("sDevInstagram"),
-    devWebsite: getVal("sDevWebsite"),
+    whatsappNumber: getVal("sWhatsapp").trim(),
+    devWhatsapp: getVal("sDevWhatsapp").trim(),
+    devInstagram: getVal("sDevInstagram").trim(),
+    devWebsite: getVal("sDevWebsite").trim(),
   };
   const newAdminPassword = getVal("sPass");
   if (newAdminPassword) body.adminPassword = newAdminPassword;
@@ -821,6 +824,32 @@ function doDelete(id, name) {
       }
     },
   );
+}
+
+async function downloadPharmacyBackup(id, name) {
+  if (!id) id = currentDetId;
+  if (!name && currentDetPh) name = currentDetPh.name;
+  if (!name) {
+    const p = pharms.find((x) => x.id === id);
+    if (p) name = p.name;
+  }
+  try {
+    toast("جاري تحضير وتنزيل نسخة بيانات الصيدلية...", "info");
+    const blob = await apiExportPharmacyData(id);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeName = (name || "pharmacy").replace(/[^a-zA-Z0-9\u0600-\u06FF_-]/g, "_");
+    const dateStr = new Date().toISOString().split("T")[0];
+    a.download = `backup_${safeName}_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    toast("تم تنزيل بيانات الصيدلية بنجاح ✓");
+  } catch (err) {
+    toast(err.message || "فشل تنزيل البيانات", "error");
+  }
 }
 
 function showConfirm(title, desc, color, cb) {

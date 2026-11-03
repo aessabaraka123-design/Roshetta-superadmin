@@ -314,6 +314,12 @@
                 <button onclick="openResetPasswordModal()" class="bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition">🔑 إعادة كلمة المرور</button>
                 <button onclick="openPrivateNotifyModal()" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition">📩 إشعار خاص</button>
                 <button onclick="openVipPriceModal()" class="bg-amber-100 text-amber-600 hover:bg-amber-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition">🏷️ سعر VIP</button>
+                <button onclick="downloadPharmacyBackup(currentDetId, currentDetPh ? currentDetPh.name : '')" class="bg-indigo-600 text-white hover:bg-indigo-700 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-sm transition" title="تنزيل نسخة احتياطية كاملة لبيانات الصيدلية بصيغة JSON">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>📥 تحميل داتا الصيدلية</span>
+                </button>
               </div>
             </div>
 
@@ -761,10 +767,10 @@
               <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col">
                 <h3 class="font-bold text-slate-800 mb-5">بيانات التواصل (روابط الدعم والمطور)</h3>
                 <div class="space-y-4">
-                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5">رقم الواتساب للدعم الفني</label><input id="sWhatsapp" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" placeholder="201xxxxxx" /></div>
-                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5 mt-4">رابط واتساب المطور</label><input id="sDevWhatsapp" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" dir="ltr" /></div>
-                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5 mt-4">رابط انستجرام المطور</label><input id="sDevInstagram" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" dir="ltr" /></div>
-                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5 mt-4">رابط موقع المطور</label><input id="sDevWebsite" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" dir="ltr" /></div>
+                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5">رقم الواتساب للدعم الفني</label><input id="sWhatsapp" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" placeholder="مثال: 972598658304" /></div>
+                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5 mt-4">رابط واتساب المطور</label><input id="sDevWhatsapp" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" placeholder="https://wa.me/972598658304" dir="ltr" /></div>
+                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5 mt-4">رابط انستجرام المطور</label><input id="sDevInstagram" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" placeholder="https://instagram.com/aessa._.baraka" dir="ltr" /></div>
+                  <div><label class="block text-xs font-semibold text-slate-500 mb-1.5 mt-4">رابط موقع المطور</label><input id="sDevWebsite" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none" placeholder="https://roshetta.com" dir="ltr" /></div>
                 </div>
                 <div class="mt-auto pt-6">
                   <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 text-sm transition">حفظ البيانات</button>
@@ -1303,8 +1309,37 @@
       </div>
     </div>
 
-    <script src="assets/api.js?v=14"></script>
-    <script src="assets/app.js?v=14"></script>
+    <!-- Receipt Viewer Modal -->
+    <div id="receiptViewModal" class="hidden fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+      <div class="modal-bg absolute inset-0" onclick="toggleModal('receiptViewModal', false)"></div>
+      <div class="relative bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl z-10 flex flex-col max-h-[90vh]">
+        <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+          <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <span>📄</span> إيصال الدفع والتحويل
+          </h3>
+          <button onclick="toggleModal('receiptViewModal', false)" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition">
+            ✕
+          </button>
+        </div>
+        <div class="flex-1 overflow-auto flex items-center justify-center bg-slate-50 rounded-xl p-2 min-h-[300px]">
+          <img id="receiptModalImg" src="" alt="إيصال الدفع" class="max-h-[60vh] max-w-full object-contain rounded-lg shadow-sm" />
+          <div id="receiptModalEmpty" class="hidden text-slate-400 text-sm text-center py-10">
+            لا تتوفر صورة لهذا الإيصال (تم السداد عبر رقم المرجع)
+          </div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-100 flex gap-3">
+          <a id="receiptModalOpenBtn" href="#" target="_blank" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-2.5 rounded-xl text-sm text-center transition">
+            فتح الصورة الأصلية ↗
+          </a>
+          <button onclick="toggleModal('receiptViewModal', false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-sm transition">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="assets/api.js?v=15"></script>
+    <script src="assets/app.js?v=15"></script>
 
     <script>
       function toggleSidebar() {

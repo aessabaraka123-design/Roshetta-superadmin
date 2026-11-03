@@ -185,6 +185,20 @@ async function apiGetPharmacyStats(id) {
   return res.json();
 }
 
+async function apiExportPharmacyData(id) {
+  const session = getSession();
+  const res = await fetch(`${API}/api/admin/pharmacies/${encodeURIComponent(id)}/export`, {
+    headers: {
+      Authorization: `Bearer ${session ? session.token : ""}`,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "تعذر تحميل بيانات الصيدلية");
+  }
+  return res.blob();
+}
+
 async function apiGetAdminSales(id, limit = 50, offset = 0) {
   const res = await apiFetch(`/api/admin/pharmacies/${encodeURIComponent(id)}/sales?limit=${limit}&offset=${offset}`);
   return res.json();
