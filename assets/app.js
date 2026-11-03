@@ -20,7 +20,7 @@ document.addEventListener("click", (event) => {
   const id = control.dataset.id;
   const actions = {
     openPharmacyDetail, openManualRenew, doDelete,
-    downloadPharmacyBackup: () => downloadPharmacyBackup(id, control.dataset.name),
+    downloadPharmacyBackup: () => openExportModal(id, control.dataset.name),
     approveReq, rejectReq, deleteReq, openEditStaff, toggleStaffStatus,
     deleteStaff, openEditBranch, deleteBranch, viewAdminSale,
     deleteAdminSale, editPlatformStaff, deletePlatformStaff,
@@ -826,27 +826,174 @@ function doDelete(id, name) {
   );
 }
 
-async function downloadPharmacyBackup(id, name) {
+let currentExportPhId = null;
+let currentExportPhName = "";
+
+function openExportModal(id, name) {
+  currentExportPhId = id || currentDetId;
+  if (!name && currentDetPh) name = currentDetPh.name;
+  if (!name) {
+    const p = pharms.find((x) => x.id === currentExportPhId);
+    if (p) name = p.name;
+  }
+  currentExportPhName = name || "الصيدلية";
+  const nameEl = document.getElementById("exportModalPhName");
+  if (nameEl) nameEl.textContent = `صيدلية: ${currentExportPhName}`;
+  toggleModal("exportModal", true);
+}
+
+function closeExportModal() {
+  toggleModal("exportModal", false);
+}
+
+async function triggerExport(format = "excel") {
+  const id = currentExportPhId;
+  const name = currentExportPhName;
+  closeExportModal();
+  await downloadPharmacyBackup(id, name, format);
+}
+
+function convertBackupToExcel(backup) {
+  if (typeof XLSX === "undefined") {
+    throw new Error("مكتبة Excel غير متوفرة حالياً");
+  }
+  const wb = XLSX.utils.book_new();
+  const d = backup.data || {};
+
+  // 1. المخزون والأدوية
+  const invRows = (d.inventory || []).map((i) => ({
+    "اسم الدواء": i.name || "",
+    "الاسم العلمي": i.scientificName || "",
+    "الباركود": i.barcode || "",
+    "التصنيف": i.category || "",
+    "الكمية المتوفرة": Number(i.qty || 0),
+    "سعر البيع (₪)": Number(i.price || 0),
+    "سعر التكلفة (₪)": Number(i.cost || 0),
+    "الحد الأدنى": Number(i.minQty || 0),
+    "تاريخ الصلاحية": i.expiry || "",
+  }));
+  const wsInv = XLSX.utils.json_to_sheet(invRows.length ? invRows : [{ "ملاحظة": "لا توجد أدوية مسجلة" }]);
+  XLSX.utils.book_append_sheet(wb, wsInv, "المخزون والأدوية");
+
+  // 2. المبيعات والفواتير
+  const salesRows = (d.sales || []).map((s) => {
+    let custName = s.customer;
+    try {
+      if (typeof s.customer === "string" && s.customer.startsWith("{")) {
+        const parsed = JSON.parse(s.customer);
+        custName = parsed.name || s.customer;
+      }
+    } catch (e) {}
+    return {
+      "رقم الفاتورة": s.id || "",
+      "التاريخ والوقت": s.date ? new Date(s.date).toLocaleString("ar-EG") : "",
+      "اسم العميل": custName || "عميل نقدي",
+      "اسم الكاشير": s.cashierName || "",
+      "الفرع": s.branchName || "",
+      "طريقة الدفع": formatPayMethod(s.paymentMethod),
+      "الإجمالي (₪)": Number(s.total || 0),
+      "الخصم (₪)": Number(s.discount || 0),
+    };
+  });
+  const wsSales = XLSX.utils.json_to_sheet(salesRows.length ? salesRows : [{ "ملاحظة": "لا توجد مبيعات" }]);
+  XLSX.utils.book_append_sheet(wb, wsSales, "المبيعات والفواتير");
+
+  // 3. العملاء والديون
+  const custRows = (d.customers || []).map((c) => ({
+    "اسم العميل": c.name || "",
+    "رقم الهاتف": c.phone || "",
+    "إجمالي الدين المتبقي (₪)": Number(c.debt || 0),
+    "آخر زيارة": c.lastVisit || "",
+  }));
+  const wsCust = XLSX.utils.json_to_sheet(custRows.length ? custRows : [{ "ملاحظة": "لا يوجد عملاء" }]);
+  XLSX.utils.book_append_sheet(wb, wsCust, "العملاء والديون");
+
+  // 4. الموردين
+  const suppRows = (d.suppliers || []).map((sp) => ({
+    "اسم المورد": sp.name || "",
+    "اسم الشركة": sp.company || "",
+    "رقم الهاتف": sp.phone || "",
+    "الرصيد المستحق (₪)": Number(sp.balance || 0),
+    "البريد الإلكتروني": sp.email || "",
+  }));
+  const wsSupp = XLSX.utils.json_to_sheet(suppRows.length ? suppRows : [{ "ملاحظة": "لا يوجد موردين" }]);
+  XLSX.utils.book_append_sheet(wb, wsSupp, "الموردين");
+
+  // 5. فواتير المشتريات
+  const purRows = (d.purchase_invoices || []).map((p) => ({
+    "رقم الفاتورة": p.invoice_number || p.id || "",
+    "التاريخ": p.date ? new Date(p.date).toLocaleDateString("ar-EG") : "",
+    "اسم المورد": p.supplier_name || "",
+    "إجمالي التكلفة (₪)": Number(p.total_cost || 0),
+    "المدفوع (₪)": Number(p.paid_amount || 0),
+    "المتبقي (₪)": Number(p.remaining || 0),
+    "الحالة": p.status || "",
+  }));
+  const wsPur = XLSX.utils.json_to_sheet(purRows.length ? purRows : [{ "ملاحظة": "لا توجد فواتير مشتريات" }]);
+  XLSX.utils.book_append_sheet(wb, wsPur, "فواتير المشتريات");
+
+  // 6. المصروفات
+  const expRows = (d.expenses || []).map((e) => ({
+    "التاريخ": e.date ? new Date(e.date).toLocaleDateString("ar-EG") : "",
+    "التصنيف": e.category || "",
+    "الوصف": e.description || "",
+    "المبلغ (₪)": Number(e.amount || 0),
+    "المسجل": e.created_by || "",
+  }));
+  const wsExp = XLSX.utils.json_to_sheet(expRows.length ? expRows : [{ "ملاحظة": "لا توجد مصروفات" }]);
+  XLSX.utils.book_append_sheet(wb, wsExp, "المصروفات");
+
+  // 7. طاقم العمل
+  const staffRows = (d.staff || []).map((st) => ({
+    "الاسم": st.name || "",
+    "البريد الإلكتروني": st.email || "",
+    "المسمى الوظيفي": st.role || "",
+    "رقم الجوال": st.phone || "",
+    "الفرع": st.branch || "",
+    "الراتب (₪)": Number(st.salary || 0),
+    "الحالة": st.active ? "نشط" : "معطل",
+  }));
+  const wsStaff = XLSX.utils.json_to_sheet(staffRows.length ? staffRows : [{ "ملاحظة": "لا يوجد موظفين" }]);
+  XLSX.utils.book_append_sheet(wb, wsStaff, "طاقم العمل");
+
+  return wb;
+}
+
+async function downloadPharmacyBackup(id, name, format = "excel") {
   if (!id) id = currentDetId;
   if (!name && currentDetPh) name = currentDetPh.name;
   if (!name) {
     const p = pharms.find((x) => x.id === id);
     if (p) name = p.name;
   }
+  const safeName = (name || "pharmacy").replace(/[^a-zA-Z0-9\u0600-\u06FF_-]/g, "_");
+  const dateStr = new Date().toISOString().split("T")[0];
+
   try {
-    toast("جاري تحضير وتنزيل نسخة بيانات الصيدلية...", "info");
-    const blob = await apiExportPharmacyData(id);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const safeName = (name || "pharmacy").replace(/[^a-zA-Z0-9\u0600-\u06FF_-]/g, "_");
-    const dateStr = new Date().toISOString().split("T")[0];
-    a.download = `backup_${safeName}_${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
-    toast("تم تنزيل بيانات الصيدلية بنجاح ✓");
+    toast(format === "excel" ? "جاري تحضير ملف الإكسل (Excel)..." : "جاري تحضير نسخة النسخ الاحتياطي (JSON)...", "info");
+    const backup = await apiExportPharmacyData(id);
+
+    if (format === "excel") {
+      if (typeof XLSX === "undefined") {
+        throw new Error("مكتبة Excel قيد التحميل، يرجى المحاولة بعد قليل");
+      }
+      const wb = convertBackupToExcel(backup);
+      const filename = `بيانات_صيدلية_${safeName}_${dateStr}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      toast("تم تنزيل ملف الإكسل بنجاح ✓");
+    } else {
+      const jsonStr = JSON.stringify(backup, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup_${safeName}_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast("تم تنزيل نسخة الـ JSON بنجاح ✓");
+    }
   } catch (err) {
     toast(err.message || "فشل تنزيل البيانات", "error");
   }

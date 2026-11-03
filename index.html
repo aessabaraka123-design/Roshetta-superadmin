@@ -314,11 +314,11 @@
                 <button onclick="openResetPasswordModal()" class="bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition">🔑 إعادة كلمة المرور</button>
                 <button onclick="openPrivateNotifyModal()" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition">📩 إشعار خاص</button>
                 <button onclick="openVipPriceModal()" class="bg-amber-100 text-amber-600 hover:bg-amber-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition">🏷️ سعر VIP</button>
-                <button onclick="downloadPharmacyBackup(currentDetId, currentDetPh ? currentDetPh.name : '')" class="bg-indigo-600 text-white hover:bg-indigo-700 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-sm transition" title="تنزيل نسخة احتياطية كاملة لبيانات الصيدلية بصيغة JSON">
+                <button onclick="openExportModal(currentDetId, currentDetPh ? currentDetPh.name : '')" class="bg-emerald-600 text-white hover:bg-emerald-700 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-sm transition" title="تصدير وتنزيل بيانات الصيدلية بصيغة Excel أو JSON">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span>📥 تحميل داتا الصيدلية</span>
+                  <span>تصدير البيانات (Excel)</span>
                 </button>
               </div>
             </div>
@@ -1309,6 +1309,61 @@
       </div>
     </div>
 
+    <!-- 📦 تصدير بيانات الصيدلية (Excel / JSON) -->
+    <div id="exportModal" class="fixed inset-0 hidden items-center justify-center z-[70] bg-slate-900/60 backdrop-blur-sm p-4">
+      <div class="modal-bg absolute inset-0" onclick="closeExportModal()"></div>
+      <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 z-10 mx-auto">
+        <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+          <div>
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+              <span>📊</span> تصدير بيانات الصيدلية
+            </h3>
+            <p id="exportModalPhName" class="text-xs font-semibold text-emerald-600 mt-0.5">صيدلية ...</p>
+          </div>
+          <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition">✕</button>
+        </div>
+
+        <p class="text-xs text-slate-500 mb-4">اختر الصيغة التي ترغب بتنزيل البيانات بها:</p>
+
+        <div class="space-y-3 mb-6">
+          <!-- خيار الإكسل الموصى به -->
+          <button onclick="triggerExport('excel')" class="w-full text-right p-4 rounded-2xl border-2 border-emerald-300 hover:border-emerald-600 bg-emerald-50/60 hover:bg-emerald-100/70 transition group flex items-start gap-3.5 shadow-sm">
+            <div class="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition">
+              📗
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-900 text-sm">ملف إكسل (Excel .xlsx)</span>
+                <span class="text-[10px] bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded-full">موصى به</span>
+              </div>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                جداول مقروءة ومرتبة بالعربية (الأدوية، المبيعات، العملاء والديون، الموردين، المصروفات، طاقم العمل) جاهزة للطباعة فوراً.
+              </p>
+            </div>
+          </button>
+
+          <!-- خيار الـ JSON التقني -->
+          <button onclick="triggerExport('json')" class="w-full text-right p-4 rounded-2xl border-2 border-slate-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/30 transition group flex items-start gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-slate-800 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm group-hover:scale-105 transition">
+              💾
+            </div>
+            <div class="flex-1">
+              <span class="font-bold text-slate-800 text-sm">نسخة احتياطية برمجية (JSON Backup)</span>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                ملف تقني خام لقواعد البيانات مخصص للأرشفة أو استعادة بيانات النظام (Restore).
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <div class="flex justify-end">
+          <button onclick="closeExportModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-sm transition">
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Receipt Viewer Modal -->
     <div id="receiptViewModal" class="hidden fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
       <div class="modal-bg absolute inset-0" onclick="toggleModal('receiptViewModal', false)"></div>
@@ -1338,8 +1393,9 @@
       </div>
     </div>
 
-    <script src="assets/api.js?v=15"></script>
-    <script src="assets/app.js?v=15"></script>
+    <script src="assets/xlsx.min.js"></script>
+    <script src="assets/api.js?v=16"></script>
+    <script src="assets/app.js?v=16"></script>
 
     <script>
       function toggleSidebar() {

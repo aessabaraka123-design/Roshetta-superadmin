@@ -196,7 +196,7 @@ async function apiExportPharmacyData(id) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || "تعذر تحميل بيانات الصيدلية");
   }
-  return res.blob();
+  return res.json();
 }
 
 async function apiGetAdminSales(id, limit = 50, offset = 0) {
