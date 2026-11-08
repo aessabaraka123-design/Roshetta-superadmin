@@ -440,10 +440,19 @@ function renderPharmsList() {
   } else {
     tb.innerHTML = paged
       .map((p) => {
-        let isExpired =
-          p.subscriptionType !== "lifetime" &&
-          (!p.subscriptionExpiry ||
-            new Date(p.subscriptionExpiry).getTime() < new Date().getTime());
+        const isTrial = ["trial", "free", "تجريبي"].includes(p.subscriptionType);
+        let isExpired = false;
+        if (p.subscriptionType !== "lifetime") {
+          if (p.subscriptionExpiry) {
+            isExpired = new Date(p.subscriptionExpiry).getTime() < new Date().getTime();
+          } else if (isTrial && p.createdAt) {
+            const autoEnd = new Date(new Date(p.createdAt).getTime() + 14 * 24 * 60 * 60 * 1000);
+            isExpired = autoEnd.getTime() < new Date().getTime();
+          } else if (!isTrial) {
+            isExpired = true;
+          }
+        }
+
         let statusBadge = "";
         if (!p.isActive) {
           statusBadge = `<span class="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full">متوقف</span>`;
@@ -451,8 +460,21 @@ function renderPharmsList() {
           statusBadge = `<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full" title="بانتظار الموافقة">غير مفعل</span>`;
         } else if (isExpired) {
           statusBadge = `<span class="bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full" title="منتهي الاشتراك">منتهي الاشتراك</span>`;
+        } else if (isTrial) {
+          statusBadge = `<span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">فترة تجريبية</span>`;
         } else {
           statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full">نشط</span>`;
+        }
+
+        let expiryDisplay = "—";
+        if (p.subscriptionType === "lifetime") {
+          expiryDisplay = '<span class="text-indigo-600 font-bold">مدى الحياة</span>';
+        } else if (p.subscriptionExpiry) {
+          expiryDisplay = fd(p.subscriptionExpiry);
+        } else if (isTrial) {
+          const created = p.createdAt ? new Date(p.createdAt) : new Date();
+          const autoExp = new Date(created.getTime() + 14 * 24 * 60 * 60 * 1000);
+          expiryDisplay = `<span class="text-slate-500" title="تجربة مجانية 14 يوم">${fd(autoExp)}</span>`;
         }
 
         return `<tr>
@@ -462,7 +484,7 @@ function renderPharmsList() {
       <td class="px-4 py-3">${subBadge(p.subscriptionType)}</td>
       <td class="px-4 py-3">${formatPayMethod(p.payment_method)}</td>
       <td class="px-4 py-3 text-xs text-slate-500">${fd(p.createdAt)}</td>
-      <td class="px-4 py-3 text-xs text-slate-500">${p.subscriptionType === "lifetime" ? '<span class="text-indigo-600 font-bold">مدى الحياة</span>' : fd(p.subscriptionExpiry)}</td>
+      <td class="px-4 py-3 text-xs text-slate-500">${expiryDisplay}</td>
       <td class="px-4 py-3 font-mono text-sm">${Number(p.totalPaid || 0).toLocaleString("en-US")} ₪</td>
       <td class="px-4 py-3">${statusBadge}</td>
       <td class="px-4 py-3"><div class="flex items-center gap-2 flex-wrap">
