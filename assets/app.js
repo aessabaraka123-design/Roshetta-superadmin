@@ -1382,20 +1382,67 @@ async function openPharmacyDetail(id) {
 
     // Basics
     document.getElementById("dbName").value = currentDetPh.name || "";
-    document.getElementById("dbOwner").value = currentDetPh.owner || "";
-    document.getElementById("dbPhone").value = currentDetPh.phone || "";
-    document.getElementById("dbExpiry").value = currentDetPh.subscriptionExpiry
-      ? currentDetPh.subscriptionExpiry.split("T")[0]
-      : "";
-    document.getElementById("dbPlan").value =
-      currentDetPh.subscriptionType || "monthly";
-    document.getElementById("dbPaid").value = currentDetPh.totalPaid || 0;
+    document.getElementById("dbOwner").value = currentDetPh.owner || currentDetPh.managerName || (d.users && d.users[0] && d.users[0].managerName) || "";
+    document.getElementById("dbPhone").value = currentDetPh.phone || (d.users && d.users[0] && d.users[0].phone) || "";
+
+    // Subscription Expiry calculation & display
+    let expiryVal = "";
+    if (currentDetPh.subscriptionExpiry) {
+      try {
+        expiryVal = new Date(currentDetPh.subscriptionExpiry).toISOString().split("T")[0];
+      } catch (e) {
+        expiryVal = String(currentDetPh.subscriptionExpiry).split("T")[0] || "";
+      }
+    }
+    if (!expiryVal) {
+      const isTrial = ["trial", "free", "تجريبي", "تجربة مجانية"].includes(currentDetPh.subscriptionType);
+      const isAnnual = ["annual", "سنوي"].includes(currentDetPh.subscriptionType);
+      const isLifetime = ["lifetime", "مدى الحياة"].includes(currentDetPh.subscriptionType);
+      const created = currentDetPh.createdAt ? new Date(currentDetPh.createdAt) : new Date();
+
+      if (isTrial) {
+        const autoExp = new Date(created.getTime() + 14 * 24 * 60 * 60 * 1000);
+        expiryVal = autoExp.toISOString().split("T")[0];
+      } else if (isAnnual) {
+        const autoExp = new Date(created);
+        autoExp.setFullYear(autoExp.getFullYear() + 1);
+        expiryVal = autoExp.toISOString().split("T")[0];
+      } else if (isLifetime) {
+        const autoExp = new Date(created);
+        autoExp.setFullYear(autoExp.getFullYear() + 100);
+        expiryVal = autoExp.toISOString().split("T")[0];
+      } else {
+        const autoExp = new Date(created);
+        autoExp.setMonth(autoExp.getMonth() + 1);
+        expiryVal = autoExp.toISOString().split("T")[0];
+      }
+    }
+    document.getElementById("dbExpiry").value = expiryVal;
+
+    let planVal = currentDetPh.subscriptionType || "monthly";
+    if (["trial", "free", "تجريبي", "تجربة مجانية"].includes(planVal)) planVal = "trial";
+    else if (["annual", "سنوي"].includes(planVal)) planVal = "annual";
+    else if (["lifetime", "مدى الحياة"].includes(planVal)) planVal = "lifetime";
+    else planVal = "monthly";
+    document.getElementById("dbPlan").value = planVal;
+
+    document.getElementById("dbPaid").value = currentDetPh.totalPaid != null ? currentDetPh.totalPaid : 0;
+
     const pm = currentDetPh.payment_method;
-    const pmText = (pm === "bank" || pm === "bop") ? "بنك فلسطين" : pm === "palpay" ? "PalPay" : (pm === "jawwal" || pm === "jawwalpay") ? "Jawwal Pay" : (pm || "—");
-    const pmDetails = [pmText, currentDetPh.transferName ? `بواسطة: ${currentDetPh.transferName}` : '', currentDetPh.transferRef ? `مرجع: ${currentDetPh.transferRef}` : ''].filter(Boolean).join(" | ");
+    const pmText = (pm === "bank" || pm === "bop") ? "بنك فلسطين"
+      : pm === "palpay" ? "PalPay"
+      : (pm === "jawwal" || pm === "jawwalpay") ? "Jawwal Pay"
+      : (pm === "free_trial" || pm === "trial" || planVal === "trial") ? (pm || "تجربة مجانية")
+      : (pm || "—");
+    const pmDetails = [
+      pmText,
+      currentDetPh.transferName ? `بواسطة: ${currentDetPh.transferName}` : '',
+      currentDetPh.transferRef ? `مرجع: ${currentDetPh.transferRef}` : ''
+    ].filter(Boolean).join(" | ");
     const dbPayMethodEl = document.getElementById("dbPayMethod");
-    if (dbPayMethodEl) dbPayMethodEl.value = pmDetails || "—";
-    document.getElementById("dbEmail").value = currentDetPh.email || "";
+    if (dbPayMethodEl) dbPayMethodEl.value = pmDetails || (planVal === "trial" ? "تجربة مجانية" : "—");
+
+    document.getElementById("dbEmail").value = currentDetPh.email || (d.users && d.users[0] && d.users[0].email) || "";
     document.getElementById("dbPassword").value = "";
 
     // Staff
@@ -1754,11 +1801,31 @@ async function saveDetBasics() {
     const d = await apiSavePharmacy(currentDetId, body);
     if (d.success) {
       document.getElementById("dbPassword").value = "";
-      toast("تم حفظ البيانات الأساسية");
+      if (currentDetPh) {
+        currentDetPh.name = body.name;
+        currentDetPh.owner = body.owner;
+        currentDetPh.phone = body.phone;
+        currentDetPh.subscriptionType = body.plan;
+        currentDetPh.totalPaid = body.paidAmount;
+        currentDetPh.subscriptionExpiry = body.subscriptionExpiry;
+        currentDetPh.email = body.email;
+      }
+      const phInList = pharms.find((p) => p.id === currentDetId);
+      if (phInList) {
+        phInList.name = body.name;
+        phInList.owner = body.owner;
+        phInList.phone = body.phone;
+        phInList.subscriptionType = body.plan;
+        phInList.totalPaid = body.paidAmount;
+        phInList.subscriptionExpiry = body.subscriptionExpiry;
+        phInList.email = body.email;
+        renderPharmsList();
+      }
+      toast("تم حفظ البيانات الأساسية بنجاح ✓");
     }
-    else toast("خطأ ما", "error");
+    else toast(d.error || "خطأ ما", "error");
   } catch (e) {
-    toast("خطأ", "error");
+    toast("خطأ في حفظ البيانات", "error");
   }
 }
 
